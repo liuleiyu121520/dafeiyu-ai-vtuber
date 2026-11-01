@@ -43,10 +43,22 @@ def build_talk_tab(config, common, state, card_css, switch_internal_css,
             logger.info(f"声卡输入设备={audio_device_info_list}")
             audio_device_info_dict = {str(device['device_index']): device['device_info'] for device in audio_device_info_list}
 
+            # 一个输入设备都没有时（Docker 容器、CI、声卡被禁用的机器），
+            # 配置里那个 device_index 一定不在选项里，nicegui 会直接抛
+            # ValueError: Invalid value，整个 WebUI 打不开。
+            # 这里补一条占位项，让页面能正常渲染——语音对话本来也用不了，
+            # 但不该连累管理后台。Windows/macOS 直装时列表非空，行为完全不变。
+            talk_device_index = config.get("talk", "device_index")
+            if not audio_device_info_dict:
+                audio_device_info_dict = {'': '（当前环境没有可用输入设备）'}
+                talk_device_index = ''
+            elif str(talk_device_index) not in audio_device_info_dict:
+                audio_device_info_dict[str(talk_device_index)] = '（配置里的设备号 %s，当前未检测到）' % talk_device_index
+
             select_talk_device_index = ui.select(
                 label='声卡输入设备',
                 options=audio_device_info_dict,
-                value=config.get("talk", "device_index")
+                value=str(talk_device_index)
             ).style("width:300px;").tooltip('这就是语言对话输入的声卡（麦克风），选择你对应的麦克风即可，如果需要监听电脑声卡可以配合虚拟声卡来实现')
 
             switch_talk_no_recording_during_playback = ui.switch('播放中不进行录音', value=config.get("talk", "no_recording_during_playback")).style(switch_internal_css).tooltip('AI在播放音频的过程中不进行录音，从而防止麦克风和扬声器太近导致的循环录音的问题')

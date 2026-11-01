@@ -23,6 +23,9 @@ PROVIDERS = {
     "custom_llm": ("utils.gpt_model.custom_llm", "Custom_LLM"),
     "dify": ("utils.gpt_model.dify", "Dify"),
     "volcengine": ("utils.gpt_model.volcengine", "VolcEngine"),
+    # 离线 Mock：没有 API Key 时也能验证「弹幕 → 回复 → 语音 → 口型 → 字幕」整条链路。
+    # 回复带 [mock] 前缀，绝不冒充真实模型。
+    "mock": ("utils.gpt_model.mock", "Mock"),
 }
 
 

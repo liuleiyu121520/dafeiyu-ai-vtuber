@@ -357,6 +357,72 @@ class MY_TTS:
             return None
     
 
+    # 离线 Mock TTS：不联网也能产出可播放的中文节奏音频，用于验证播放链路与口型
+    async def mock_tts_api(self, data):
+        """合成一段「按字数节奏起伏」的音频。
+
+        不是真人声，但**时长与字数成正比、音量按音节起伏**——
+        口型同步、播放队列、字幕时序都能用它验证；听感上是一条有节奏的
+        合成音，不会让人误以为是真实配音（日志里也会明确标注 mock）。
+
+        Args:
+            data (dict): {"content": str, "mock_tts": {...}}
+
+        Returns:
+            str | None: 音频绝对路径
+        """
+        try:
+            import math
+            import struct
+            import wave
+
+            content = str(data.get("content") or "")
+            cfg = data.get("mock_tts") or self.config.get("mock_tts") or {}
+            sample_rate = int(cfg.get("sample_rate") or 24000)
+            # 中文正常语速约 4~5 字/秒，取 0.22s/字，和真实 TTS 的节奏接近
+            per_char = float(cfg.get("seconds_per_char") or 0.22)
+            base_freq = float(cfg.get("base_freq") or 196.0)   # G3，偏低沉的女声区
+
+            # 至少 0.4 秒，避免空文本产出 0 帧文件让播放器报错
+            duration = max(0.4, len(content) * per_char)
+            total_frames = int(sample_rate * duration)
+
+            file_name = "mock_tts_" + self.common.get_bj_time(4) + ".wav"
+            voice_tmp_path = self.common.get_new_audio_path(self.audio_out_path, file_name)
+
+            # 每个字一个音节包络，音节之间留一点静音，口型会跟着一张一合
+            syllable = max(1, int(sample_rate * per_char * 0.78))
+            frames = bytearray()
+            for index in range(total_frames):
+                position = index % syllable
+                if position >= syllable - 1:
+                    frames += struct.pack("<h", 0)
+                    continue
+                # 音节内的包络：快起慢落，听起来像一个个字
+                envelope = math.sin(math.pi * (position / syllable)) ** 1.5
+                # 轻微的音高起伏，避免一条死板的纯音
+                wobble = 1.0 + 0.06 * math.sin(2 * math.pi * 3.1 * index / sample_rate)
+                value = math.sin(2 * math.pi * base_freq * wobble * index / sample_rate)
+                # 加一点二次谐波，口型分析器更容易取到稳定的振幅
+                value += 0.35 * math.sin(4 * math.pi * base_freq * wobble * index / sample_rate)
+                amplitude = int(11000 * envelope * value / 1.35)
+                frames += struct.pack("<h", max(-32768, min(32767, amplitude)))
+
+            with wave.open(voice_tmp_path, "wb") as handle:
+                handle.setnchannels(1)
+                handle.setsampwidth(2)
+                handle.setframerate(sample_rate)
+                handle.writeframes(bytes(frames))
+
+            logger.warning(
+                f"TTS 使用 mock 模式（离线合成音，不是真实配音）：{len(content)} 字 -> {duration:.2f}s，{voice_tmp_path}"
+            )
+            return voice_tmp_path
+        except Exception as e:
+            logger.error(traceback.format_exc())
+            logger.error(e)
+            return None
+
     # 请求OpenAI_TTS的api
     def openai_tts_api(self, data):
         try:

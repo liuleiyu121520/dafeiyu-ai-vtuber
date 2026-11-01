@@ -1,0 +1,98 @@
+# 大肥鱼 AI 虚拟主播 · macOS 单机 Docker 编排
+#
+# 只有一个服务。原项目的 WebUI「一键运行」会自己 Popen main.py，
+# Compose 再起一个 worker 就会出现两套播放队列/弹幕监听/TTS。
+# 容器内进程树：
+#   tini(1) ─ entrypoint.sh ─┬ caption_printer.py   :5500  (字幕 + 舞台信号 + 音频桥)
+#                            ├ integrations/.../hub  :8888  (弹幕 Hub，可选)
+#                            └ webui.py             :8081  → main.py :8082/:12345
+name: dafeiyu
+
+services:
+  dafeiyu:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      platforms:
+        - linux/arm64
+    image: dafeiyu-ai-vtuber:macos-arm64
+    platform: linux/arm64
+    container_name: dafeiyu
+    restart: unless-stopped
+
+    env_file:
+      - path: .env
+        required: false
+
+    environment:
+      # ---- 容器内路径 ----
+      APP_DIR: /app
+      TZ: Asia/Shanghai
+      PYGAME_HIDE_SUPPORT_PROMPT: "1"
+      # 容器里没有声卡，SDL 用 dummy 驱动，只保证 pygame 能初始化不炸
+      SDL_AUDIODRIVER: dummy
+
+      # ---- 监听地址（关键）----
+      # 容器内必须绑 0.0.0.0。绑 127.0.0.1 时 Docker Desktop 的端口转发
+      # 「TCP 连得上但一个字节都不回」，宿主机和 OBS 全部拿不到数据。
+      # 对外暴露仍由下面的 ports 限制在 127.0.0.1，安全性不受影响。
+      WEBUI_HOST: 0.0.0.0
+      CAPTION_BIND: 0.0.0.0
+      BARRAGE_HUB_BIND: 0.0.0.0
+
+      # ---- 端口 ----
+      WEBUI_PORT: "${WEBUI_PORT:-8081}"
+      API_PORT: "${API_PORT:-8082}"
+      LIVE2D_PORT: "${LIVE2D_PORT:-12345}"
+      CAPTION_PORT: "${CAPTION_PORT:-5500}"
+      BARRAGE_HUB_PORT: "${BARRAGE_HUB_PORT:-8888}"
+
+      # ---- 行为开关 ----
+      BARRAGE_MODE: "${BARRAGE_MODE:-mock}"
+      ENABLE_CAPTION_SERVICE: "${ENABLE_CAPTION_SERVICE:-1}"
+      APPLY_ENV_CONFIG: "${APPLY_ENV_CONFIG:-1}"
+      AUTO_RUN: "${AUTO_RUN:-1}"
+
+    ports:
+      # 默认只绑 127.0.0.1：管理接口不外网暴露
+      - "127.0.0.1:${WEBUI_PORT:-8081}:8081"
+      - "127.0.0.1:${API_PORT:-8082}:8082"
+      - "127.0.0.1:${LIVE2D_PORT:-12345}:12345"
+      - "127.0.0.1:${CAPTION_PORT:-5500}:5500"
+      - "127.0.0.1:${BARRAGE_HUB_PORT:-8888}:8888"
+
+    volumes:
+      # 配置：整份挂进去，WebUI 保存后宿主机立刻能看到
+      - ./config.json:/app/config.json
+      # 持久化：容器重建不丢
+      - ./log:/app/log
+      - ./out:/app/out
+      - ./data:/app/data
+      - ./song:/app/song
+      - ./bgm_cache:/app/bgm_cache
+      # Live2D 模型（大肥鱼模型不在仓库里，宿主机准备好后挂进来）
+      - ./Live2D/live2d-model:/app/Live2D/live2d-model
+      # 说明：Live2D 的 html/js/css/assets 用镜像内的（跟随代码版本），
+      # 只把模型目录挂出来，避免宿主机缺文件导致舞台页 404
+
+    healthcheck:
+      test: ["CMD", "python", "/usr/local/bin/healthcheck.py", "--quiet"]
+      interval: 20s
+      timeout: 8s
+      start_period: 90s
+      retries: 5
+
+    # 优雅停止：先 TERM 让 entrypoint 收子进程，再 KILL
+    stop_grace_period: 20s
+    stop_signal: SIGTERM
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "5"
+
+    # 音频缓存清理：out/ 里每天积累的临时 wav 由 scripts/macos/doctor.sh --clean 处理
+    # 不在容器里做 cron，避免和 bind mount 抢文件
+
+volumes: {}

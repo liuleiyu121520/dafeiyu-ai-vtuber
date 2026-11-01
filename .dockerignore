@@ -1,0 +1,68 @@
+# ---- 版本库与 IDE ----
+.git
+.gitignore
+.gitattributes
+.github
+.vscode
+
+# ---- 密钥与本地配置（绝不能进镜像）----
+.env
+.env.*
+!.env.example
+cookie/
+config.local.json
+*.pem
+*.key
+
+# ---- 运行态（bind mount 覆盖）----
+log/*
+!log/README.md
+out/*
+!out/README.md
+bgm_cache/
+song/*
+!song/README.md
+data/*.db
+out/songroom/
+out/song_resume/
+out/song_lyric_ids.json
+
+# ---- 大模型 / 素材（挂载或运行时下载）----
+Live2D/live2d-model/大肥鱼/
+sensevoice/
+models/*
+!models/README.md
+
+# ---- 构建产物与缓存 ----
+__pycache__
+*.py[cod]
+*.egg-info
+.venv
+venv
+.pytest_cache
+.mypy_cache
+.ruff_cache
+node_modules
+dist
+build
+
+# ---- Windows 专有（不参与 Linux 构建）----
+Scripts/
+*.bat
+tools/DouyinBarrageGrab/
+tools/*.ps1
+protobuf/protoc.exe
+快手逆向.js
+
+# ---- 测试与开发工具 ----
+tests/
+
+# ---- 大文件 ----
+*.zip
+*.pdf
+data/伊卡洛斯百度百科.*
+docs/images/
+docs/*.xmind
+docs/chart.jpg
+docs/simple_flowchart.png
+docs/xmind.png

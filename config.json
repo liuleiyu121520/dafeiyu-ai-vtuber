@@ -98,7 +98,7 @@
     "normal_interval_min": 0.05,
     "normal_interval_max": 0.1,
     "out_path": "out",
-    "player": "pygame",
+    "player": "browser",
     "info_to_callback": true
   },
   "audio_player": {
@@ -462,7 +462,7 @@
       "similarity": 0.5
     }
   },
-  "audio_synthesis_type": "fish_audio",
+  "audio_synthesis_type": "edge-tts",
   "audio_random_speed": {
     "normal": {
       "enable": false,
@@ -1721,7 +1721,7 @@
     }
   },
   "webui": {
-    "ip": "127.0.0.1",
+    "ip": "0.0.0.0",
     "port": 8081,
     "title": "AI Vtuber",
     "auto_run": false,

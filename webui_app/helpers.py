@@ -40,4 +40,7 @@ AUDIO_SYNTHESIS_TYPE_OPTIONS = {
     'multitts': 'MultiTTS',
     'melotts': 'MeloTTS',
     'index_tts': 'Index-TTS',
+    # 离线 Mock TTS：按字数节奏生成的合成音，用来验证播放队列/口型/字幕时序。
+    # 日志会明确标注「不是真实配音」。
+    'mock_tts': 'Mock TTS（离线测试）',
 }

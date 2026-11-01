@@ -17,7 +17,8 @@ from .message import build_playback
 from . import alarm
 from utils.audio_handle.my_tts import MY_TTS
 from utils.audio_handle.audio_player import AUDIO_PLAYER
-from utils.audio_handle.playback_stream import PlaybackStream
+from utils.audio_handle.playback_stream import PlaybackStream, make_playback_stream
+from utils.audio_handle.browser_bridge import BrowserAudioBridge, bridge_enabled
 from utils.audio_handle.bgm_player import BGMPlayer
 from utils.audio_handle.ducking import clamp_ratio, duck_step
 import utils.my_global as my_global
@@ -110,14 +111,19 @@ class Audio:
         # 文案单独一个线程排队播放
         self.only_play_copywriting_thread = None
 
-        if self.config.get("play_audio", "player") in ["pygame"]:
-            # 弹幕音频和文案音频各占一个 channel。以前这两个都指向 pygame.mixer 模块
+        if self.config.get("play_audio", "player") in ["pygame", "browser", "browser_bridge"]:
+            # 弹幕音频和文案音频各占一条独立流。以前这两个都指向 pygame.mixer 模块
             # 本身，也就是共用 mixer.music 那一条全局流，"暂停文案"会连正在播的
             # 弹幕回复一起暂停。
-            Audio.mixer_normal = PlaybackStream(0)
-            Audio.mixer_copywriting = PlaybackStream(1)
+            #
+            # 具体实现由 make_playback_stream 按配置选：
+            #   pygame  -> 本机声卡（Windows / macOS 直装）
+            #   browser -> 浏览器 Web Audio（Docker / OBS 浏览器源）
+            # 两者接口完全一致，下面所有播放逻辑都感知不到差别。
+            Audio.mixer_normal = make_playback_stream(0, self.config)
+            Audio.mixer_copywriting = make_playback_stream(1, self.config)
             # channel 2 给 BGM，channel 3 给点歌：歌和人声不共用通道，才能同时响
-            Audio.mixer_song = PlaybackStream(3)
+            Audio.mixer_song = make_playback_stream(3, self.config)
             threading.Thread(target=self._song_loop, daemon=True, name="song-player").start()
 
             # 空闲 BGM：人声来了只把音量压低，点歌的歌在放时完全让开（暂停）。
@@ -250,7 +256,7 @@ class Audio:
         if Audio.song_playing or len(Audio.song_queue):
             return True
 
-        if self.config.get("play_audio", "player") in ["pygame"]:
+        if self.config.get("play_audio", "player") in ["pygame", "browser", "browser_bridge"]:
             return bool(Audio.mixer_normal.music.get_busy()
                         or Audio.mixer_copywriting.music.get_busy())
 
@@ -1159,6 +1165,15 @@ class Audio:
                 }
 
                 voice_tmp_path = await self.my_tts.index_tts_api(data)
+            elif message["tts_type"] == "mock_tts":
+                # 离线 Mock TTS：与 audio_synthesis_use_local_config 里那条分支同源，
+                # 供 /tts 接口（tts_handle）单独调用时使用。
+                data = {
+                    "content": message["content"],
+                    "mock_tts": message.get("data") or self.config.get("mock_tts"),
+                }
+
+                voice_tmp_path = await self.my_tts.mock_tts_api(data)
             elif message["tts_type"] == "none":
                 # Audio.voice_tmp_path_queue.put(message)
                 voice_tmp_path = None
@@ -1166,7 +1181,11 @@ class Audio:
             message["result"] = {
                 "code": 200,
                 "msg": "合成成功",
-                "audio_path": voice_tmp_path
+                # voice_tmp_path 只有走完上面某个分支才会被绑定。
+                # tts_type 是个没实现的值时，以前这里直接 UnboundLocalError，
+                # 报错信息还伪装成「合成失败」，很难查。用 locals() 兜一下，
+                # 至少能给出可读的结果。
+                "audio_path": locals().get("voice_tmp_path")
             }
         except Exception as e:
             logger.error(traceback.format_exc())
@@ -1368,11 +1387,11 @@ class Audio:
     async def only_play_audio(self):
         try:
             try:
-                if self.config.get("play_audio", "player") in ["pygame"]:
+                if self.config.get("play_audio", "player") in ["pygame", "browser", "browser_bridge"]:
                     Audio.mixer_normal.init()
             except Exception as e:
                 logger.error(traceback.format_exc())
-                logger.error("pygame mixer_normal初始化失败，普通音频将无法正常播放，请检查声卡是否正常！")
+                logger.error("mixer_normal初始化失败，普通音频将无法正常播放，请检查声卡/音频桥是否正常！")
 
             while True:
                 try:
@@ -1512,7 +1531,6 @@ class Audio:
                             Audio.audio_player.play(data_json)
                         else:
                             logger.debug(f"voice_tmp_path={voice_tmp_path}")
-                            import pygame
 
                             try:
                                 # 旧路径（同时播关闭时）歌也在 mixer_normal 上放，要告诉 BGM 这不是人声
@@ -1541,15 +1559,17 @@ class Audio:
                                 limit_seconds = float(self.config.get("choose_song", "max_play_seconds") or 0)
                                 cut_only_when_waiting = self.config.get("choose_song", "cut_when_waiting")
                                 limit_this = data_json.get("type") == "song" and limit_seconds > 0
-                                started_ms = pygame.time.get_ticks()
+                                # 时间函数走播放流自己的抽象：pygame 版用 pygame.time，
+                                # 浏览器版用 time.monotonic，语义一致（进程启动以来的毫秒）
+                                started_ms = Audio.mixer_normal.now_ms()
                                 cut_at_seconds = None
 
                                 try:
                                     while Audio.mixer_normal.music.get_busy():
-                                        pygame.time.Clock().tick(10)
+                                        Audio.mixer_normal.tick(10)
                                         if not limit_this:
                                             continue
-                                        played_seconds = (pygame.time.get_ticks() - started_ms) / 1000.0
+                                        played_seconds = (Audio.mixer_normal.now_ms() - started_ms) / 1000.0
                                         if played_seconds < limit_seconds:
                                             continue
                                         if cut_only_when_waiting and not (Audio.voice_tmp_path_queue or Audio.message_queue):
@@ -1620,7 +1640,7 @@ class Audio:
             return False
         if not (self.config.get("choose_song") or {}).get("overlap_speech"):
             return False
-        if self.config.get("play_audio", "player") not in ["pygame"]:
+        if self.config.get("play_audio", "player") not in ["pygame", "browser", "browser_bridge"]:
             return False
         return self.config.get("visual_body") not in [
             "xuniren", "EasyAIVtuber", "digital_human_video_player", "live2d_TTS_LLM_GPT_SoVITS_Vtuber"]
@@ -1973,11 +1993,11 @@ class Audio:
         
         try:
             try:
-                if self.config.get("play_audio", "player") in ["pygame"]:
+                if self.config.get("play_audio", "player") in ["pygame", "browser", "browser_bridge"]:
                     Audio.mixer_copywriting.init()
             except Exception as e:
                 logger.error(traceback.format_exc())
-                logger.error("pygame mixer_copywriting初始化失败，文案音频将无法正常播放，请检查声卡是否正常！")
+                logger.error("mixer_copywriting初始化失败，文案音频将无法正常播放，请检查声卡/音频桥是否正常！")
 
             async def random_speed_and_play(audio_path):
                 """对音频进行变速和播放，内置延时，其实就是提取了公共部分
@@ -2012,14 +2032,12 @@ class Audio:
                             }
                             Audio.audio_player.play(data_json)
                     else:
-                        import pygame
-
                         try:
-                            # 使用pygame播放音频
+                            # 播放实现由配置决定（pygame 本机声卡 / 浏览器音频桥）
                             Audio.mixer_copywriting.music.load(audio_path)
                             Audio.mixer_copywriting.music.play()
                             while Audio.mixer_copywriting.music.get_busy():
-                                pygame.time.Clock().tick(10)
+                                Audio.mixer_copywriting.tick(10)
                             Audio.mixer_copywriting.music.stop()
 
                             await self.send_audio_play_info_to_callback()
@@ -2159,7 +2177,7 @@ class Audio:
             except Exception as e:
                 logger.error(traceback.format_exc())
             
-            if self.config.get("play_audio", "player") in ["pygame"]:
+            if self.config.get("play_audio", "player") in ["pygame", "browser", "browser_bridge"]:
                 Audio.mixer_copywriting.quit()
         except Exception as e:
             logger.error(traceback.format_exc())
@@ -2367,6 +2385,15 @@ class Audio:
             data = dict(self.config.get("fish_audio") or {})
             data["content"] = content
             voice_tmp_path = await asyncio.to_thread(self.my_tts.fish_audio_api, data)
+
+        elif audio_synthesis_type == "mock_tts":
+            # 离线测试用：不联网也能产出可播放、有时长、有起伏的音频，
+            # 用来验证播放队列 / 口型 / 字幕时序。日志会标注「不是真实配音」。
+            data = {
+                "content": content,
+                "mock_tts": self.config.get("mock_tts"),
+            }
+            voice_tmp_path = await self.my_tts.mock_tts_api(data)
 
         elif audio_synthesis_type == "gradio_tts":
             data = {

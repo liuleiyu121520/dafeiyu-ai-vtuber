@@ -42,6 +42,7 @@ from webui_app.pages.tts import build_tts_tab
 from webui_app.pages.visual_body import build_visual_body_tab
 from webui_app.pages.web_page import build_web_page_tab
 from webui_app.repage import apply_page_plan, order_tabs
+from webui_app.safe_select import install as install_safe_select
 from webui_app.run_log import RunLog
 from webui_app.processes import (
     restart_application,
@@ -163,6 +164,11 @@ def init():
 
 # 初始化基本配置
 init()
+
+# 下拉框取值兜底：配置里的值不在选项表里时（新增取值、旧版本遗留、无声卡设备号），
+# 以前会让整个 WebUI 构建期抛 ValueError 打不开。这里统一降级成「置空显示」，
+# 页面照常渲染，用户重新选一次即可修正。必须在建页面之前安装。
+install_safe_select(ui)
 
 # 将本地目录中的静态文件（如 CSS、JavaScript、图片等）暴露给 web 服务器，以便用户可以通过特定的 URL 访问这些文件。
 if config.get("webui", "local_dir_to_endpoint", "enable"):

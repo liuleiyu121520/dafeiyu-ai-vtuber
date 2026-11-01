@@ -13,6 +13,9 @@ CHAT_TYPE_OPTIONS = {
     'dify': 'Dify',
     'volcengine': '火山引擎',
     'custom_llm': '自定义LLM',
+    # 离线 Mock：没有 API Key 时也能把「弹幕 → 回复 → 语音 → 口型 → 字幕」整条链路跑通。
+    # 回复带 [mock] 前缀，绝不冒充真实模型调用成功。
+    'mock': 'Mock（离线测试）',
 }
 
 PLATFORM_OPTIONS = {

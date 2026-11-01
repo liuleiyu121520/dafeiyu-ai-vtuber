@@ -1,5 +1,24 @@
 (() => {
-  // 信号来自核心进程的 Windows 播放会话，不申请麦克风，也不播放第二份音频。
+  /* 口型信号有两个来源，二选一：
+   *
+   * 1. 浏览器音频桥（Docker / OBS 浏览器源）—— 由 stage-audio.js 提供。
+   *    它读的是真正在播放的 PCM 振幅，window.__stageAudio 存在就说明这个模式生效。
+   *
+   * 2. Windows 核心播放会话（原方案）—— 由 tools/songroom_lipsync.py 轮询
+   *    Windows CoreAudio 的 IAudioMeterInformation，写到 out/songroom/mouth.json。
+   *    只有在没有浏览器音频桥时才会走这条（Windows 直装场景）。
+   *
+   * 两条路的输出约定完全一样：window.__songroomLipSync 是 0~1 的开口度。
+   */
+  const browserAudio = typeof window.__stageAudio !== 'undefined';
+  if (browserAudio) {
+    // 浏览器音频桥自己驱动 __songroomLipSync，这里只补状态位，绝不覆盖它
+    window.__songroomLipStatus = window.__songroomLipStatus || {
+      ready: false, sourcePid: 0, sessionCount: 0, raw: 0,
+    };
+    return;
+  }
+
   let target=0,current=0,sourceTime=0,lastFrame=performance.now();
   window.__songroomLipSync=0;
   window.__songroomLipStatus={ready:false,sourcePid:0,sessionCount:0,raw:0};

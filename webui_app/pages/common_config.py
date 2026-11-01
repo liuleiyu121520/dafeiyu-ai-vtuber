@@ -374,9 +374,25 @@ def build_common_config_tab(config, common, card_css, switch_internal_css, butto
                     input_play_audio_out_path = ui.input(label='音频输出路径', placeholder='音频文件合成后存储的路径，支持相对路径或绝对路径', value=config.get("play_audio", "out_path")).tooltip('音频文件合成后存储的路径，支持相对路径或绝对路径')
                     select_play_audio_player = ui.select(
                         label='音频播放器',
-                        options={'pygame': 'pygame', 'audio_player_v2': 'audio_player_v2', 'audio_player': 'audio_player'},
+                        # browser：把音频交给浏览器（OBS 浏览器源）用 Web Audio 播放。
+                        # Docker 里没有声卡，必须选这个；Windows/macOS 直装仍然用 pygame。
+                        options={
+                            'pygame': 'pygame（本机声卡）',
+                            'browser': 'browser（浏览器 / OBS 浏览器源）',
+                            'audio_player_v2': 'audio_player_v2',
+                            'audio_player': 'audio_player',
+                        },
                         value=config.get("play_audio", "player")
-                    ).style("width:200px").tooltip('选用的音频播放器，默认pygame不需要再安装其他程序。audio player需要单独安装对接，详情看视频教程')
+                    ).style("width:280px").tooltip(
+                        '选用的音频播放器。pygame 直接播到本机声卡（Windows/macOS 直装用）；'
+                        'browser 把音频交给浏览器播放（Docker / OBS 浏览器源用，口型跟随真实振幅）；'
+                        'audio_player 需要单独安装对接，详情看视频教程')
+                    # 配置里可能是历史遗留的未知值，nicegui 会直接抛 ValueError 打不开后台
+                    if config.get("play_audio", "player") not in select_play_audio_player.options:
+                        logger.warning(
+                            f"play_audio.player={config.get('play_audio', 'player')!r} 不在可选播放器里，"
+                            "已回退为 pygame 显示；请在上面下拉里重新选一个并保存")
+                        select_play_audio_player.value = 'pygame'
                     # 原先这是套在「音频播放」里的又一张子卡，卡里只有这一个框（走查 audit-24/26 点名的
                     # 那种"一字段一卡"，全站三层嵌套也就这一处）；并到播放器旁边，标签带上对象名，
                     # 免得全站那好几个叫「API地址」的框在搜索与跳转里分不清谁是谁

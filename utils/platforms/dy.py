@@ -1,5 +1,7 @@
 import websocket
 import json
+import os
+import time
 import traceback
 
 from utils.my_log import logger
@@ -189,34 +191,60 @@ def start_listen(new_config, common, my_handle, platform: str, schedule_thread):
         logger.debug("WebSocket connection closed")
 
     def on_open(ws):
-        logger.debug("WebSocket connection established")
+        nonlocal reconnect_delay
+        logger.info("弹幕 WebSocket 连接成功")
+        reconnect_delay = 1.0
+
+    # WebSocket连接URL。
+    # 默认仍是原项目的 ws://127.0.0.1:8888；macOS/Docker 下由 integrations/douyin/adapter/hub.py
+    # 在本机复刻同一个协议，所以 dy.py 这边不需要改协议。
+    # 需要指向别的采集器时，用 config.json 的 dy.ws_url 或环境变量 DAFEIYU_BARRAGE_WS 覆盖。
+    ws_url = (
+        os.environ.get("DAFEIYU_BARRAGE_WS")
+        or config.get("dy", "ws_url")
+        or "ws://127.0.0.1:8888"
+    )
+    logger.info(f"监听地址：{ws_url}")
+
+    # 断线重连：以前 run_forever() 返回后就直接 join 定时任务线程，
+    # 采集器一断（或者比主程序晚启动）就再也不连回来了。
+    # 现在按指数退避重连，最长 30 秒一次，保证弹幕服务恢复后能自动接上。
+    reconnect_delay = 1.0
+    max_delay = 30.0
+    attempt = 0
 
     try:
-        # WebSocket连接URL
-        ws_url = "ws://127.0.0.1:8888"
-
-        logger.info(f"监听地址：{ws_url}")
-
-        # 不设置日志等级
         websocket.enableTrace(False)
-        # 创建WebSocket连接
-        ws = websocket.WebSocketApp(
-            ws_url,
-            on_message=on_message,
-            on_error=on_error,
-            on_close=on_close,
-            on_open=on_open,
-        )
+        while True:
+            attempt += 1
+            try:
+                ws = websocket.WebSocketApp(
+                    ws_url,
+                    on_message=on_message,
+                    on_error=on_error,
+                    on_close=on_close,
+                    on_open=on_open,
+                )
+                ws.run_forever(ping_interval=0)
+            except KeyboardInterrupt:
+                logger.warning("程序被强行退出")
+                break
+            except Exception as error:
+                logger.error(f"弹幕 WebSocket 异常：{error}")
 
-        # 运行WebSocket连接
-        ws.run_forever()
-    except KeyboardInterrupt:
-        logger.warning("程序被强行退出")
+            # 走到这里说明连接断了（或压根没连上）
+            if attempt == 1:
+                logger.warning(
+                    f"连接不上弹幕服务 {ws_url}。请确认弹幕采集器/Hub 已启动。"
+                    f" 程序会每 {reconnect_delay:.0f}~{max_delay:.0f} 秒重试一次，不影响其他功能。"
+                )
+            else:
+                logger.info(f"弹幕连接已断开，{reconnect_delay:.0f} 秒后重连（第 {attempt} 次）")
+
+            time.sleep(reconnect_delay)
+            reconnect_delay = min(max_delay, reconnect_delay * 2)
     finally:
-        logger.warning(
-            "关闭ws连接...请确认您是否启动了抖音弹幕监听程序，ws服务正常运行！\n监听程序启动成功后，请重新运行程序进行对接使用！"
-        )
-        # os._exit(0)
+        logger.warning("关闭ws连接...请确认弹幕采集器/Hub 是否在运行！")
 
     # 等待子线程结束
     schedule_thread.join()

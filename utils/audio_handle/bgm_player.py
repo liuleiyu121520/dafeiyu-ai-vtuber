@@ -14,7 +14,7 @@ import threading
 import time
 
 from utils.my_log import logger
-from utils.audio_handle.playback_stream import PlaybackStream
+from utils.audio_handle.playback_stream import PlaybackStream, make_playback_stream
 from utils.audio_handle.ducking import clamp_ratio
 from utils.netease_music import download_netease_candidate, is_valid_audio_file, search_netease_songs
 
@@ -47,7 +47,9 @@ class BGMPlayer:
         self.is_song_busy = is_song_busy
         self._level = 1.0             # 相对 bgm.volume 的比例：压低时是 duck_ratio，正常是 1.0
         self._last_speech_at = -1e9   # 最近一次检测到人声的时刻
-        self.stream = PlaybackStream(BGM_CHANNEL_INDEX)
+        # 走工厂：pygame 直装用本机声卡，Docker 用浏览器音频桥。
+        # 写死 PlaybackStream 的话，Docker 里 BGM 会静音（容器没声卡）。
+        self.stream = make_playback_stream(BGM_CHANNEL_INDEX, config)
 
         self._running = False
         self._thread = None
@@ -108,6 +110,16 @@ class BGMPlayer:
     # ---------- 每 0.3 秒一次的判断 ----------
 
     def _tick(self):
+        # 心跳：循环卡住时能从日志看出来。以前没有任何心跳，
+        # BGM 静默就完全无法判断是「在播」还是「线程死了」。
+        self._tick_count = getattr(self, "_tick_count", 0) + 1
+        if self._tick_count % 200 == 0:  # 约 60 秒一次
+            logger.debug(
+                f"[BGM] 心跳 tick={self._tick_count} "
+                f"busy={self.stream.get_busy()} level={self._level:.2f} "
+                f"paused={self._paused} current={self._current}"
+            )
+
         cfg = self._settings()
 
         if not cfg["enable"]:
@@ -164,6 +176,10 @@ class BGMPlayer:
                 time.sleep(0.12)
                 self.stream.pause()
             self.stream.set_volume(0.0)
+            # 暂停后本地立刻认为「不在播」，不然下一轮 get_busy() 还要等浏览器回报，
+            # 浏览器那边如果卡住，整个 BGM 循环就停在这里了。
+            if hasattr(self.stream, "_playing"):
+                self.stream._playing = False
         except Exception as e:
             logger.error(f"[BGM] 暂停失败: {e}")
 

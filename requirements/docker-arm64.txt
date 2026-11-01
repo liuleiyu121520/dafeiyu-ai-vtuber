@@ -1,0 +1,88 @@
+# 大肥鱼 AI 虚拟主播 · Docker / linux-arm64 运行依赖
+#
+# 由 requirements/ 的各个分组裁剪而来。裁剪原则：
+#   1. 保留 WebUI + 主程序 + 弹幕 + LLM + TTS + 点歌 + BGM 的全部运行期依赖
+#   2. 剔除 Windows 专有、或在 linux-arm64 上没有可用轮子的包
+#   3. 剔除与 protobuf 7.x 硬冲突、且本机用不到的 Provider
+#
+# 与 requirements/core.txt + platform.txt 的差异清单：
+#   - keyboard          保留（import 正常）；真正启用按键监听需要 /dev/input 与 root，容器内默认关闭
+#   - azure-cognitiveservices-speech  无 linux-arm64 轮子（azure_tts 容器内不可用）
+#   - pyvirtualcam / pyautogui / PyGetWindow  Windows/macOS 桌面专有
+#   - opencv-python → opencv-python-headless   容器无 GUI，headless 才有稳定 arm64 轮子
+#   - faiss-cpu / funasr / faster-whisper  体积巨大，本机不做本地 ASR / 向量检索
+#   - google-generativeai  钉死 google-ai-generativelanguage<0.7，后者又钉 protobuf<5，
+#                          与仓库要求的 protobuf 7.x 在解析层面互斥（gemini 容器内不可用）
+#   - wenxinworkshop   走 gitee git 依赖，构建期不稳定，容器内不预装
+#
+# 保留但容器内不可用的（装了不影响启动，只是调用会失败，日志会提示）：
+#   baidu-aip / SpeechRecognition（需要麦克风）
+
+# ---- WebUI 与主链路（同 core.txt）----
+nicegui==3.18.0
+fastapi==0.159.1
+starlette==1.7.0
+uvicorn==0.54.0
+httpx==0.28.1
+aiohttp==3.14.5
+yarl==1.25.1
+requests==2.34.2
+openai==3.36.1
+packaging==26.3
+pydantic>=2.11,<3
+numpy==2.2.6
+loguru==0.7.3
+schedule==1.2.2
+
+# ---- TTS ----
+edge-tts>=7.3.1
+pydub==0.25.1
+pygame==2.6.1
+PyAudio==0.2.14
+websockets==16.1.1
+
+# ---- 文本处理 ----
+langid==1.1.6
+profanity==1.1
+pyahocorasick==2.3.1
+pypinyin==0.55.0
+jieba==0.42.1
+pygtrans==1.6.2
+colorlog==6.12.0
+
+# ---- 按键监听（main.py 顶层 import，必须能导入；talk.key_listener_enable 默认 false）----
+keyboard==0.13.5
+
+# ---- 本地 ASR（保留 import 兼容；talk 模式在 Docker 下默认关闭）----
+SpeechRecognition==3.17.0
+baidu-aip==4.16.13
+chardet==7.7.0
+
+# ---- aiohttp/nicegui 传递依赖，显式抬到最新 ----
+multidict==7.1.0
+async-timeout==5.0.1
+docutils==0.23
+
+# ---- 直播平台弹幕（platform.txt 中可在 arm64 安装的部分）----
+betterproto==2.0.0b1
+websocket-client==1.8.0
+protobuf==7.36.2
+brotli>=1.1.0
+PySocks==1.7.1
+emoji==2.16.0
+bilibili-api-python==17.4.2
+TikTokLive==7.0.1
+pytchat==0.5.5
+
+# ---- LLM Provider ----
+dashscope==1.14.1
+PyJWT==2.8.0
+zhipuai==2.1.4.20230731
+volcengine-python-sdk[ark]==1.0.99
+
+# ---- 图像/视觉（headless 版才有 arm64 轮子）----
+opencv-python-headless==4.12.0.88
+Pillow==12.3.0
+
+# ---- 运维 ----
+psutil==7.1.0

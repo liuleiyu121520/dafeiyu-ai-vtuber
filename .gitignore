@@ -273,3 +273,16 @@ song_disabled/
 promo-video/
 tutorial-video/
 *.bak
+
+# ---- macOS / Docker 改造新增 ----
+# .env 里有 API Key，绝不进版本库（.env.example 是模板，要提交）
+.env
+.env.local
+
+# 容器写出来的运行态
+data/.env_managed_keys.json
+docker/Dockerfile.test
+
+# 测试产物
+/tmp/*.png
+tests/**/__pycache__

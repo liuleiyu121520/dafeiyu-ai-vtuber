@@ -24,6 +24,9 @@ SUPPORTED_PROVIDERS = {
     "custom_llm",
     "dify",
     "volcengine",
+    # macOS/Docker 改造新增：离线 Mock，没有 API Key 时也能验证整条链路。
+    # 回复带 [mock] 前缀，不会冒充真实模型调用成功。
+    "mock",
 }
 
 RETIRED_PROVIDERS = {
