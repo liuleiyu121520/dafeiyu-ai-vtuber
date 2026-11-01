@@ -293,9 +293,9 @@
     "name": "大肥鱼"
   },
   "openai": {
-    "api": "https://open.bigmodel.cn/api/paas/v4",
+    "api": "http://host.docker.internal:8326/v1",
     "api_key": [
-      ""
+      "S_U9_P4OutO5L2dNcPdFy_-YSTl5BQ2Cg6mbKSF1T_M"
     ]
   },
   "fish_audio": {
@@ -305,7 +305,7 @@
     "speed": 1.0
   },
   "chatgpt": {
-    "model": "glm-4.7-flash",
+    "model": "deepseek-account/deepseek-flash",
     "temperature": 0.9,
     "max_tokens": 4096,
     "top_p": 1.0,
@@ -462,7 +462,7 @@
       "similarity": 0.5
     }
   },
-  "audio_synthesis_type": "edge-tts",
+  "audio_synthesis_type": "mock_tts",
   "audio_random_speed": {
     "normal": {
       "enable": false,

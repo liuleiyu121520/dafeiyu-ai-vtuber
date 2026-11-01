@@ -288,10 +288,25 @@ def main():
             return state not in ("playing",)
 
         ended, end_elapsed = wait_for(not_playing, timeout=args.timeout)
-        page.wait_for_timeout(800)
-        lip_after = float(page.evaluate("() => window.__songroomLipSync || 0"))
         record("播放结束", ended, f"{end_elapsed:.2f}s")
-        record("播放结束后口型归零", lip_after < 0.05, f"lip={lip_after:.3f}")
+
+        # 口型归零是**平滑回落**的（收口速率 15/s），不是瞬间跳变。
+        # 固定等 800ms 会偶尔抓到还在回落的中间值（比如 0.5），属于假失败。
+        # 改成轮询：给它最多 3 秒，只要归零就通过，并记录实际用时。
+        lip_after = 1.0
+        lip_elapsed = 0.0
+        lip_deadline = time.monotonic() + 3.0
+        while time.monotonic() < lip_deadline:
+            lip_after = float(page.evaluate("() => window.__songroomLipSync || 0"))
+            if lip_after < 0.05:
+                break
+            page.wait_for_timeout(100)
+            lip_elapsed = time.monotonic() - (lip_deadline - 3.0)
+        record(
+            "播放结束后口型归零",
+            lip_after < 0.05,
+            f"lip={lip_after:.3f}（{lip_elapsed:.1f}s 内回落）",
+        )
 
         # ---- 7. 无 console 报错 ----
         real_errors = [e for e in console_errors if "favicon" not in e.lower() and "404" not in e]

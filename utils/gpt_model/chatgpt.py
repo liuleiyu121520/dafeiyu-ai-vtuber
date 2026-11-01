@@ -51,8 +51,11 @@ class Chatgpt:
             # 将用户输入的消息添加到会话中
             session['msg'].append({"role": "user", "content": msg})
 
-            # 添加当前时间到会话中
-            session['msg'][1] = {"role": "system", "content": "current time is:" + self.common.get_bj_time()}
+            # 把当前时间并进第一条 system，而不是再插一条 system。
+            # 原因：多条 system 时，不少 OpenAI 兼容网关（DeepSeek、自建网关）只认最后一条，
+            # 人设会被 "current time is:..." 整个顶掉，表现为角色突然自称 ChatGPT/AI 助手。
+            # 合并成一条既保留时间信息，又不会丢人设。
+            self._apply_time(session)
 
             # 调用 ChatGPT 接口生成回复消息
             message = self.chat_with_gpt(session['msg'])
@@ -105,7 +108,7 @@ class Chatgpt:
 
             config = deepcopy(self.session_config)
             config['id'] = sessionid
-            config['msg'].append({"role": "system", "content": "current time is:" + self.common.get_bj_time()})
+            # 不再追加第二条 system，时间由 _apply_time 并进第一条
             Chatgpt.sessions[sessionid] = config
 
             while len(Chatgpt.sessions) > self.MAX_SESSIONS:
@@ -113,6 +116,27 @@ class Chatgpt:
 
             return Chatgpt.sessions[sessionid]
 
+
+    # 时间标记，用于每次刷新时先剥掉旧的时间再写新的
+    _TIME_MARKER = "\n\n当前时间："
+
+    def _apply_time(self, session):
+        """把「当前时间」写进第一条 system，全程只保留一条 system。
+
+        以前是往 msg 里插第二条 system（"current time is:..."），
+        很多 OpenAI 兼容网关只认最后一条 system，人设就被时间顶掉了。
+        现在改成「剥掉旧时间 -> 追加新时间」到同一条 system 上。
+        """
+        messages = session.get("msg") or []
+        if not messages or messages[0].get("role") != "system":
+            return
+        base = messages[0]["content"].split(self._TIME_MARKER)[0]
+        messages[0]["content"] = base + self._TIME_MARKER + self.common.get_bj_time()
+
+        # 清掉历史遗留的第二条 system（旧版本建出来的会话里可能有）
+        session["msg"] = [messages[0]] + [
+            m for m in messages[1:] if m.get("role") != "system"
+        ]
 
     def get_sampling_params(self):
         """取当前会话要发的采样参数；配置里没填或已被上游拒绝的项直接跳过。"""
@@ -233,8 +257,13 @@ class Chatgpt:
             # 将用户输入的消息添加到会话中
             session['msg'].append({"role": "user", "content": msg})
 
-            # 添加当前时间到会话中
-            session['msg'][1] = {"role": "system", "content": "current time is:" + self.common.get_bj_time()}
+            # 时间并进第一条 system，不再往 msg[1] 塞第二条 system。
+            # 以前这里写的是 session['msg'][1] = {...system...}：
+            # 一旦会话里只剩一条 system（本次修复后的正常情况），
+            # 下标 1 正好是刚追加的 **用户消息**，会被这条 system 顶掉 ——
+            # 结果是发给上游的 messages 里根本没有 user，
+            # 网关直接报 "at least one message is required"。
+            self._apply_time(session)
 
             # logger.warning(sessionid)
             # logger.warning(session)

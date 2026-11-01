@@ -1,5 +1,5 @@
 {
-  "distinct_texts": 1194,
+  "distinct_texts": 1193,
   "kinds": {
     "Badge": 19,
     "Button": 170,
@@ -81,7 +81,7 @@
     "Bert-VITS2 情感语音合成系统，引入 BERT 增强语意，音调更自然富含情感。": 2,
     "CHANNELS": 1,
     "CSS": 2,
-    "ChatGPT": 1,
+    "ChatGPT": 2,
     "CosyVoice": 3,
     "DDSP-SVC": 3,
     "Dify": 3,
@@ -121,7 +121,6 @@
     "MeloTTS API程序所在设备的IP地址以及端口号": 1,
     "MetaHuman 推流 metahuman_stream": 1,
     "Mock TTS（离线测试）": 1,
-    "Mock（离线测试）": 1,
     "MultiTTS": 3,
     "MultiTTS所在设备的IP地址以及端口号": 1,
     "NiceGUI 官方文档": 2,

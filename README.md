@@ -62,3 +62,59 @@ API Key、大肥鱼模型、弹幕监听程序、歌曲文件都不在仓库里�
 - 大肥鱼 Live2D 模型来自 [xkk6663/dsh-live2d-mao](https://github.com/xkk6663/dsh-live2d-mao)，模型作者 @Mao绒绒家园，**非商业使用，禁止盗用与出售**。
 - 抖音弹幕监听使用 [dy-barrage-grab](https://gitee.com/haodong108/dy-barrage-grab)，遵循其自身的免责声明。
 - 使用 AI 虚拟主播直播时，请遵守平台规则：明确标识 AI 生成内容，开播期间有真人值守，可以随时接管和互动。
+
+---
+
+## 🍎 macOS 单机 Docker 部署
+
+在 Apple Silicon Mac 上用 Docker 跑，OBS 显示画面和声音。
+
+### 一键启动 / 停止（推荐）
+
+在 Finder 里双击：
+
+- **一键启动.command** —— 起容器、拉主程序、开 OBS、打开舞台页
+- **一键停止.command** —— 先停播报、再停容器、检查残留
+
+> 首次双击如果提示「无法打开，因为无法验证开发者」：
+> 右键 → 打开 → 仍要打开。或者先在终端执行
+> `chmod +x 一键启动.command 一键停止.command`。
+
+### 命令行方式
+
+```bash
+scripts/macos/install.sh      # 安装（幂等，只需一次）
+scripts/macos/start.sh        # 启动
+scripts/macos/doctor.sh       # 自检
+scripts/macos/stop.sh         # 停止
+```
+
+### 配置
+
+改 .env 即可，容器启动时会自动写进 config.json：
+
+```bash
+# 大模型（任意 OpenAI 兼容网关）
+OPENAI_BASE_URL=https://open.bigmodel.cn/api/paas/v4
+OPENAI_API_KEY=你的key
+LLM_MODEL=glm-4.7-flash
+
+# 语音合成
+TTS_PROVIDER=edge-tts          # 免费；要本地 TTS 见 docs/LOCAL_TTS_GUIDE.md
+```
+
+> 大模型跑在本机（Ollama / LM Studio / 其他网关）时，容器里要用
+> `http://host.docker.internal:端口/v1`，不能用 `127.0.0.1`。
+
+### OBS
+
+浏览器源：`http://127.0.0.1:12345/Live2D/stage-landscape.html`
+宽 1920、高 1080，**必须勾选「通过 OBS 控制音频」**。
+
+### 文档
+
+- [架构分析](docs/ARCHITECTURE_MACOS.md)
+- [部署指南](docs/DOCKER_SETUP_MACOS.md)
+- [故障排查](docs/DOCKER_TROUBLESHOOTING.md)
+- [本地 TTS 接入](docs/LOCAL_TTS_GUIDE.md)
+- [测试报告](docs/TEST_REPORT_MACOS.md)
