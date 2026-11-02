@@ -3,7 +3,7 @@ from nicegui import ui
 
 from utils.my_log import logger
 from webui_app.descriptions import show_card_desc
-from webui_app.helpers import textarea_data_change
+from webui_app.helpers import input_data_change, textarea_data_change
 from webui_app.pages import PageConfig
 from webui_app.theme import INK
 
@@ -105,11 +105,11 @@ def build_talk_tab(config, common, state, card_css, switch_internal_css,
     with ui.expansion('对话打断', icon="settings", value=True).classes('w-2/3'):
         with ui.row():
             switch_talk_interrupt_talk_enable = ui.switch('启用', value=config.get("talk", "interrupt_talk", "enable")).style(switch_internal_css)
-            textarea_talk_interrupt_talk_keywords = ui.textarea(
+            input_talk_interrupt_talk_keywords = ui.input(
                 label='打断关键词',
-                placeholder='如：等一下、住嘴 多个请换行分隔',
-                value=textarea_data_change(config.get("talk", "interrupt_talk", "keywords"))
-            ).style("width:200px;").tooltip("打断关键词，当语句中包含出现这些词时，会中断对话，具体清除内容根据清除类型自定义")
+                placeholder='如：等一下, 住嘴（多词用逗号隔开）',
+                value=input_data_change(config.get("talk", "interrupt_talk", "keywords"))
+            ).style("width:240px;").tooltip("打断关键词，当语句中包含出现这些词时，会中断对话，具体清除内容根据清除类型自定义")
 
             with ui.card().style(card_css):
                 ui.label("清除类型")
@@ -129,9 +129,9 @@ def build_talk_tab(config, common, state, card_css, switch_internal_css,
                 label='唤醒模式',
                 options={"长期唤醒": "长期唤醒", "单次唤醒": "单次唤醒"},
                 value=config.get("talk", "wakeup_sleep", "mode")
-            ).style("width:100px").tooltip("长期唤醒：说完唤醒词后，会触发提示语，后期对话不需要唤醒词；单次唤醒：每次对话都需要携带唤醒词，否则默认保持睡眠，且不会触发提示语")
-            textarea_talk_wakeup_sleep_wakeup_word = ui.textarea(label='唤醒词', placeholder='如：管家 多个请换行分隔', value=textarea_data_change(config.get("talk", "wakeup_sleep", "wakeup_word"))).style("width:200px;")
-            textarea_talk_wakeup_sleep_sleep_word = ui.textarea(label='睡眠词', placeholder='如：关机 多个请换行分隔', value=textarea_data_change(config.get("talk", "wakeup_sleep", "sleep_word"))).style("width:200px;")
+            ).style("width:110px").tooltip("长期唤醒：说完唤醒词后，会触发提示语，后期对话不需要唤醒词；单次唤醒：每次对话都需要携带唤醒词，否则默认保持睡眠，且不会触发提示语")
+            input_talk_wakeup_sleep_wakeup_word = ui.input(label='唤醒词', placeholder='如：管家（多词用逗号隔开）', value=input_data_change(config.get("talk", "wakeup_sleep", "wakeup_word"))).style("width:200px;")
+            input_talk_wakeup_sleep_sleep_word = ui.input(label='睡眠词', placeholder='如：关机（多词用逗号隔开）', value=input_data_change(config.get("talk", "wakeup_sleep", "sleep_word"))).style("width:200px;")
             textarea_talk_wakeup_sleep_wakeup_copywriting = ui.textarea(label='唤醒提示语', placeholder='如：在的 多个请换行分隔', value=textarea_data_change(config.get("talk", "wakeup_sleep", "wakeup_copywriting"))).style("width:300px;")
             textarea_talk_wakeup_sleep_sleep_copywriting = ui.textarea(label='睡眠提示语', placeholder='如：晚安 多个请换行分隔', value=textarea_data_change(config.get("talk", "wakeup_sleep", "sleep_copywriting"))).style("width:300px;")
 
@@ -226,13 +226,13 @@ def build_talk_tab(config, common, state, card_css, switch_internal_css,
                 "RATE": (input_talk_silence_RATE, 'int'),
                 "interrupt_talk": {
                     "enable": (switch_talk_interrupt_talk_enable, 'bool'),
-                    "keywords": (textarea_talk_interrupt_talk_keywords, 'textarea'),
+                    "keywords": (input_talk_interrupt_talk_keywords, 'textarea'),
                 },
                 "wakeup_sleep": {
                     "enable": (switch_talk_wakeup_sleep_enable, 'bool'),
                     "mode": (select_talk_wakeup_sleep_mode, 'str'),
-                    "wakeup_word": (textarea_talk_wakeup_sleep_wakeup_word, 'textarea'),
-                    "sleep_word": (textarea_talk_wakeup_sleep_sleep_word, 'textarea'),
+                    "wakeup_word": (input_talk_wakeup_sleep_wakeup_word, 'textarea'),
+                    "sleep_word": (input_talk_wakeup_sleep_sleep_word, 'textarea'),
                     "wakeup_copywriting": (textarea_talk_wakeup_sleep_wakeup_copywriting, 'textarea'),
                     "sleep_copywriting": (textarea_talk_wakeup_sleep_sleep_copywriting, 'textarea'),
                 },

@@ -28,7 +28,7 @@ class ChatLog:
             with scroll_area:
                 self._placeholders[id(scroll_area)] = ui.label(
                     '还没有聊天记录：弹幕被回复后会显示在这里，最多保留最近 100 条'
-                ).style('font-size:13px;color:#4b5563;padding:14px 12px;')
+                ).style('font-size:13px;color:#4a4a4a;padding:14px 12px;')
         scroll_area.scroll_to(percent=1, duration=0.2)
 
     def add(self, data_json):

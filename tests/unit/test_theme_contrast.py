@@ -18,7 +18,7 @@ def test_dark_text_on_light_accents():
 
 def test_white_text_on_dark_accents():
     assert readable_on('#3e78bd') == '#ffffff'
-    assert readable_on('#111827') == '#ffffff'
+    assert readable_on('#1f1f1f') == '#ffffff'
     assert readable_on('rgb(17, 24, 39)') == '#ffffff'
 
 
@@ -62,7 +62,7 @@ def test_preview_css_overrides_panel_card_and_accent():
     assert '.q-tab-panel .q-card{background:linear-gradient(45deg, #3494E6, #EC6EAD) !important;}' in css
     assert 'background-color:#EC6EAD !important' in css
     # 亮粉上放白字读不清，这条要自己挑深色字
-    assert 'color:#111827 !important' in css
+    assert 'color:#1f1f1f !important' in css
 
 
 def test_preview_css_clears_backgrounds_for_plain_theme():

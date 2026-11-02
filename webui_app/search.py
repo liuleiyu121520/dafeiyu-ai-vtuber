@@ -12,8 +12,8 @@ from webui_app.fields import build_index, jump_to, value_text
 
 MAX_HITS = 12
 
-INK = '#111827'
-INK_MUT = '#4b5563'
+INK = '#1f1f1f'
+INK_MUT = '#4a4a4a'
 
 # ↑/↓ 在结果里移动焦点，Enter 交给浏览器原生触发（VSCode 命令面板就是这么做的）。
 # 判"对话框开着"不能靠 offsetParent——对话框是 position:fixed，它恒为 null（实测踩过）。
@@ -38,8 +38,8 @@ document.addEventListener('keydown', function (e) {
 # 计算值仍是 0px none——不再跟它争，直接换成一定生效的背景色。
 FOCUS_CSS = """
 <style>
-.luna-search-card button.q-btn:focus{background:#e8f0fb !important;
-                                     box-shadow:inset 0 0 0 2px #2b5d9b !important;}
+.luna-search-card button.q-btn:focus{background:#fff0c2 !important;
+                                     box-shadow:inset 0 0 0 2px #cc3a05 !important;}
 </style>
 """
 

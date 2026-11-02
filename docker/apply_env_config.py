@@ -53,6 +53,10 @@ ENV_MAP = {
     "FISH_AUDIO_KEY": (("fish_audio", "api_key"), str),
     "FISH_AUDIO_REFERENCE_ID": (("fish_audio", "reference_id"), str),
     "FISH_AUDIO_MODEL": (("fish_audio", "model"), str),
+    # 本地 MLX Audio TTS 服务（TTS_PROVIDER=custom_tts 时生效）
+    "MLX_TTS_API": (("custom_tts", "api_ip_port"), str),
+    "MLX_TTS_VOICE": (("custom_tts", "voice"), str),
+    "MLX_TTS_MODEL": (("custom_tts", "model"), str),
 
     # ---- 平台与房间 ----
     "PLATFORM": (("platform",), str),

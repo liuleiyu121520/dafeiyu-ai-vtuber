@@ -20,6 +20,7 @@
 
 | 方案 | 配置值 | 你要提供的地址 | 服务端项目 |
 |---|---|---|---|
+| **MLX Audio（Apple Silicon 本地）** | `custom_tts` | `http://host:8788` | `pre-study/mlx-audio-tts-service`（本仓库配套，见下方接法 D） |
 | **GPT-SoVITS** | `gpt_sovits` | `http://host:9880` | [RVC-Boss/GPT-SoVITS](https://github.com/RVC-Boss/GPT-SoVITS) 的 `api_v2.py` |
 | **VITS-Simple-API** | `vits` | `http://host:23456` | [Artrajz/vits-simple-api](https://github.com/Artrajz/vits-simple-api) |
 | **CosyVoice** | `cosyvoice` | `http://host:50000` | [FunAudioLLM/CosyVoice](https://github.com/FunAudioLLM/CosyVoice) |
@@ -33,7 +34,7 @@
 
 ---
 
-## 三种最常见的接法
+## 四种最常见的接法
 
 ### 接法 A：GPT-SoVITS（最像大肥鱼音色的本地方案）
 
@@ -187,6 +188,108 @@ except Exception as e:
 
 ---
 
+
+### 接法 D：MLX Audio（Apple Silicon 本地，零 Key 零联网）
+
+配套服务在 `pre-study/mlx-audio-tts-service`，用 mlx-audio 在 Mac 本地跑
+Kokoro / Qwen3-TTS，不需要显卡、不需要 API Key、不联网。
+
+1. 启动服务（首次会自动装依赖并下载模型）：
+
+```bash
+cd pre-study/mlx-audio-tts-service
+./scripts/start.command          # 或 PYTHONPATH=src .venv/bin/python -m mlx_tts_service serve
+```
+
+2. 自检一下能不能出声：
+
+```bash
+curl -s -X POST http://127.0.0.1:8788/tts \
+  -H 'Content-Type: application/json' \
+  -d '{"text":"你好，我是本地合成的声音。","voice":"xiaoxiao"}' -o hello.wav
+afplay hello.wav
+```
+
+3. 改 `.env`：
+
+```bash
+TTS_PROVIDER=custom_tts
+MLX_TTS_API=http://127.0.0.1:8788      # 程序在 Docker 里 → http://host.docker.internal:8788
+MLX_TTS_VOICE=xiaoxiao
+```
+
+4. 改 `config.json`（WebUI → 声音与表现 → 语音合成 → **MLX Audio（本地 TTS）** 也能改）：
+
+```json
+"audio_synthesis_type": "custom_tts",
+"custom_tts": {
+  "api_ip_port": "http://127.0.0.1:8788",
+  "api_path": "/tts",
+  "model": "",
+  "voice": "xiaoxiao",
+  "lang_code": "z",
+  "speed": 1.0,
+  "format": "wav",
+  "preprocess": true,
+  "ref_audio": "",
+  "ref_text": "",
+  "timeout": 120
+}
+```
+
+5. 想用克隆音色：在服务端建一次音色，之后填名字就行。
+
+```bash
+# model 必须是 qwen3_clone（Base 版），写 qwen3_tts 会报 "requires 'voice'"
+curl -X POST http://127.0.0.1:8788/v1/voices \
+  -H 'Content-Type: application/json' \
+  -d '{"name":"我的","ref_audio":"/Users/you/voice-ref/我的.wav","model":"qwen3_clone"}'
+```
+
+然后 `config.json` 里：
+
+```json
+"custom_tts": {
+  "voice": "我的",
+  "model": "",
+  "lang_code": ""
+}
+```
+
+> **用克隆音色时 `model` 和 `lang_code` 都留空**。模型会跟着音色自动选成 Qwen3 Base；
+> 语言代码留空走 auto，硬写 `z` 是 Kokoro 的取值，对 Qwen3 没意义。
+
+### 开机自启
+
+服务要长期用，装成 macOS 的 LaunchAgent，开机自动启动、崩了自动拉起：
+
+```bash
+cp /Users/leiyu/code/pre-study/mlx-audio-tts-service/scripts/com.dafeiyu.mlx-tts-service.plist \
+   ~/Library/LaunchAgents/
+launchctl load ~/Library/LaunchAgents/com.dafeiyu.mlx-tts-service.plist
+```
+
+装完之后这一步就不用管了，重启机器 TTS 服务会自己起来。
+
+### 界面里怎么用
+
+「声音与表现 → 语音合成 → MLX Audio（本地 TTS）」这张卡片：
+
+| 控件 | 说明 |
+|---|---|
+| **模型** 下拉 + 「拉取模型」 | 列出服务端支持的模型（kokoro / qwen3-tts / qwen3-tts-base / chatterbox），也能直接手输 HF 仓库名 |
+| **音色** 下拉 + 「拉取音色」 | 内置音色标「内置」、克隆音色标「克隆」；留空用服务端默认 |
+| **上传音色**（折叠区） | 选一段 10~30 秒清晰人声 + 起个名字，直接建成克隆音色，建完自动选中 |
+
+两个下拉都会在**建页时自动预填**，不用先点按钮。
+
+> 用克隆音色时，**模型和语言代码都留空**：模型会跟着音色自动选成 Qwen3 Base，
+> 语言代码留空走 auto（硬写 `z` 是 Kokoro 的取值，对 Qwen3 会带偏语速）。
+
+> **为什么值得用**：`preprocess` 会把「2026 年」「13800138000」「12.5%」改写成中文读法，
+> 再按标点分段，避免本地模型逐字硬读、时长爆炸。这些在 edge-tts 上是自动的，本地模型不是。
+
+---
 ## 常见错误
 
 | 报错 | 原因 | 处理 |
@@ -196,6 +299,8 @@ except Exception as e:
 | `合成成功` 但没声音 | `play_audio.player` 不是 `browser` | 改成 `browser`（Docker 必须） |
 | Gradio 报 `fn_index` 错 | 项目版本变了 | 打开 `http://host:7860/config` 查真实的 `fn_index` |
 | 音色不像 | 参考音频太短/太长/有噪音 | 用 3~10 秒干净人声，文本要和音频完全对应 |
+| `MLX Audio TTS 未知错误` | 本地服务没起来 | `curl http://127.0.0.1:8788/health` 先确认 |
+| 本地 TTS 首次特别慢 | 模型第一次加载 + 下载权重 | 先 `POST /v1/models/load` 预热，或把 `timeout` 调到 300 |
 
 ---
 

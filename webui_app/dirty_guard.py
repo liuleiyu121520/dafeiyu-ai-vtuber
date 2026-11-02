@@ -13,8 +13,12 @@ from nicegui import app, context, ui
 
 from webui_app.fields import INPUT_TYPES, field_name, hidden, jump_to_element, locate, value_text
 
-INK = '#111827'
-INK_MUT = '#4b5563'
+INK = '#1f1f1f'
+INK_MUT = '#4a4a4a'
+# 语义色跟 Mistral 色板走：未保存警示用深琥珀（奶油底上 4.6:1），已保存用森林绿，中性态用 slate
+WARN_DIRTY = '#b45309'
+OK_SAVED = '#15803d'
+STEEL = '#6a6a6a'
 
 # 浏览器侧的拦截开关：Chrome 只在用户已经和页面交互过之后才允许 beforeunload 弹窗，
 # 而「改过控件」本身就意味着交互过，所以这里不需要额外兜底。
@@ -40,7 +44,7 @@ class DirtyGuard:
         self._status = None
         self._elements = {}
         self._select_tab = None
-        self._accent = '#3e78bd'
+        self._accent = '#fa520f'
         self.dialog = None
         self._list = None
         self._hint = None
@@ -156,7 +160,7 @@ class DirtyGuard:
             self._label.set_text(f'● {count} 项未保存' if count else '● 配置已保存')
             # 角标是 ui.button，NiceGUI 给它挂的 Quasar text-primary 是 !important 规则，
             # 内联色不带 !important 压不过它
-            self._label.style('color:' + ('#b45309' if count else '#16a34a') + ' !important;')
+            self._label.style('color:' + (WARN_DIRTY if count else OK_SAVED) + ' !important;')
         if self._status is not None:
             self._status.set_text(f'当前有 {count} 项改动还没写进配置文件' if count else '所有改动都已保存')
-            self._status.style('color:' + ('#b45309' if count else '#4b5563'))
+            self._status.style('color:' + (WARN_DIRTY if count else STEEL))

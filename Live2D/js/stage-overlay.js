@@ -131,10 +131,16 @@
 
   let thinking = false;
 
+  // 思考气泡总开关：按需求关掉。关掉后既不弹「让我想想…」气泡，
+  // 也不套用思考姿态（歪头 + 眼球上翻 + 抬眉）。后端 /thinking 信号照收，
+  // 只是前端不表现；想恢复改成 true 并把三个舞台页的 ?v= 版本号一起升一位。
+  const SHOW_THINKING = false;
+
   function setThinking(on) {
-    bubble.classList.toggle('on', !!on);
-    thinking = !!on;
-    if (on) {
+    const show = SHOW_THINKING && !!on;
+    bubble.classList.toggle('on', show);
+    thinking = show;
+    if (show) {
       bubbleText.textContent = THINK_TEXTS[Math.floor(Math.random() * THINK_TEXTS.length)];
       place();
     }

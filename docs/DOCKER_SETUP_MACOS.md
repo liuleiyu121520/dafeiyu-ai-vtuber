@@ -144,6 +144,36 @@ PLATFORM=dy2      # 容器内直连抖音网页 wss（需要直播间正在开�
 | `hub` | 启动 Hub，等外部采集器连进来 |
 | `none` | 不启动 Hub（用 dy2 直连，或不需要弹幕） |
 
+#### 收真实抖音弹幕：本机采集器
+
+Windows 上弹幕靠 `tools/DouyinBarrageGrab/WssBarrageServer.exe` 推到 :8888，
+macOS 没有这个 .NET 程序。仓库提供等价的纯 Python 采集器
+`integrations/douyin/collector.py`：直连抖音 wss、解 protobuf，然后把事件
+POST 给 Hub 的 `/inject`。**`dy.py` 与业务侧一行都不用改**，和 Windows 跑
+exe 走的是同一套入口。
+
+```bash
+scripts/macos/collector.sh probe     # 三步自检：ttwid → roomId → wss 握手
+scripts/macos/collector.sh start     # 开播前启动（后台常驻，自动重连）
+scripts/macos/collector.sh status    # 看采集器与 Hub 计数
+scripts/macos/collector.sh logs      # 跟随日志
+scripts/macos/collector.sh stop      # 停止（不影响主容器）
+```
+
+直播间号复用 `.env` 的 `ROOM_ID`，采集器是独立的 compose profile，
+`docker compose up -d` 不会带上它，必须显式 `--profile collector`（或用上面脚本）。
+
+probe 结果怎么读：
+
+| 卡在第几步 | 含义 | 处理 |
+|---|---|---|
+| 1 ttwid | 出网被拦或风控 | 换网络；关代理软件 |
+| 2 roomId | **直播间没开播**（最常见） | 开播后自动接上，无需重启 |
+| 3 wss 握手 | 返回 `DEVICE_BLOCKED` 等 | 浏览器里抓完整 wss 地址填进 `.env` 的 `DY_WSS_URL`，`{room_id}` 会被替换 |
+
+> 采集器复用的 wss 参数是公开抓包值，抖音随时可能收紧。第 3 步失败但
+> `dy2` 也同时失效，说明是平台侧变更，不是本机配置问题。
+
 ---
 
 ## 4. OBS 配置

@@ -40,7 +40,7 @@ def _swatch(name, theme, on_pick, current=False):
     card = background_of(theme.get('card')) or '#ffffff'
     box = ui.element('div').style(
         f'background:{panel};border-radius:10px;padding:8px;width:158px;cursor:pointer;'
-        + ('border:2px solid #2b5d9b;box-shadow:0 1px 3px rgba(0,0,0,0.12);' if current else
+        + ('border:2px solid #cc3a05;box-shadow:0 1px 3px rgba(0,0,0,0.12);' if current else
            'border:1px solid rgba(0,0,0,0.14);box-shadow:0 1px 3px rgba(0,0,0,0.12);'))
     with box:
         with ui.row().style('justify-content:space-between;align-items:baseline;width:100%;'):
@@ -55,7 +55,7 @@ def _swatch(name, theme, on_pick, current=False):
             accent = (theme.get('button_bottom_color') or '').strip()
             ui.element('div').style(
                 f'width:44px;height:12px;border-radius:6px;margin-top:4px;'
-                f'background:{accent or "#5898d4"};')
+                f'background:{accent or "#fa520f"};')
     box.on('click', lambda: on_pick(name))
     return box
 
@@ -299,6 +299,7 @@ def build_web_page_tab(config, common, config_path, config_to_dict, card_css, sw
                 switch_webui_show_card_tts_multitts = ui.switch('MultiTTS', value=config.get("webui", "show_card", "tts", "multitts")).style(switch_internal_css)
                 switch_webui_show_card_tts_melotts = ui.switch('MeloTTS', value=config.get("webui", "show_card", "tts", "melotts")).style(switch_internal_css)
                 switch_webui_show_card_tts_index_tts = ui.switch('Index-TTS', value=config.get("webui", "show_card", "tts", "index_tts")).style(switch_internal_css)
+                switch_webui_show_card_tts_custom_tts = ui.switch('custom_tts', value=config.get("webui", "show_card", "tts", "custom_tts")).style(switch_internal_css)
                 
         with ui.card().style(card_css):
             ui.label("变声")
@@ -383,6 +384,7 @@ def build_web_page_tab(config, common, config_path, config_to_dict, card_css, sw
                         "multitts": (switch_webui_show_card_tts_multitts, 'bool'),
                         "melotts": (switch_webui_show_card_tts_melotts, 'bool'),
                         "index_tts": (switch_webui_show_card_tts_index_tts, 'bool'),
+                        "custom_tts": (switch_webui_show_card_tts_custom_tts, 'bool'),
                     },
                     "svc": {
                         "ddsp_svc": (switch_webui_show_card_svc_ddsp_svc, 'bool'),

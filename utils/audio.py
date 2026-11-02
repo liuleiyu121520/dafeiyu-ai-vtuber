@@ -1165,6 +1165,14 @@ class Audio:
                 }
 
                 voice_tmp_path = await self.my_tts.index_tts_api(data)
+            elif message["tts_type"] == "custom_tts":
+                # 本地 MLX Audio TTS 服务（pre-study/mlx-audio-tts-service）
+                data = {
+                    "content": message["content"],
+                    "custom_tts": message["data"],
+                }
+
+                voice_tmp_path = await self.my_tts.custom_tts_api(data)
             elif message["tts_type"] == "mock_tts":
                 # 离线 Mock TTS：与 audio_synthesis_use_local_config 里那条分支同源，
                 # 供 /tts 接口（tts_handle）单独调用时使用。
@@ -2497,6 +2505,13 @@ class Audio:
                 "index_tts": self.config.get(audio_synthesis_type),
             }
             voice_tmp_path = await self.my_tts.index_tts_api(data)
+        elif audio_synthesis_type == "custom_tts":
+            # 本地 MLX Audio TTS 服务（pre-study/mlx-audio-tts-service）
+            data = {
+                "content": content,
+                "custom_tts": self.config.get(audio_synthesis_type),
+            }
+            voice_tmp_path = await self.my_tts.custom_tts_api(data)
 
         return voice_tmp_path
 

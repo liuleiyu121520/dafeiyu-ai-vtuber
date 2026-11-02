@@ -997,3 +997,72 @@ class MY_TTS:
             logger.error(f'Fish Audio 请求失败: {e}')
             return None
 
+    # 本地 MLX Audio TTS 服务（Apple Silicon 本地推理，见 pre-study/mlx-audio-tts-service）
+    async def custom_tts_api(self, data):
+        """请求本机 mlx-audio-tts-service 合成语音。
+
+        服务端接口（任选其一，这里用 /tts 拿二进制最省事）：
+          POST /tts              {"text","voice","speed","format",...} -> 音频二进制
+          POST /v1/audio/speech   OpenAI 兼容
+
+        Args:
+            data (dict): {"content": str, "custom_tts": {...}}
+
+        Returns:
+            str | None: 音频文件路径
+        """
+        try:
+            cfg = data.get("custom_tts") or self.config.get("custom_tts") or {}
+            api_ip_port = str(cfg.get("api_ip_port") or "http://127.0.0.1:8788").rstrip("/")
+            api_path = str(cfg.get("api_path") or "/tts")
+            if not api_path.startswith("/"):
+                api_path = "/" + api_path
+            API_URL = api_ip_port + api_path
+
+            audio_format = str(cfg.get("format") or "wav").lower()
+            data_json = {
+                "text": data["content"],
+                "format": audio_format,
+            }
+
+            # 音色：留空就让服务端用默认音色
+            voice = str(cfg.get("voice") or "").strip()
+            if voice:
+                data_json["voice"] = voice
+
+            # 模型：留空用服务端默认（Kokoro 快，Qwen3 更像真人）
+            model = str(cfg.get("model") or "").strip()
+            if model:
+                data_json["model"] = model
+
+            speed = cfg.get("speed")
+            if speed not in (None, ""):
+                data_json["speed"] = float(speed)
+
+            lang_code = str(cfg.get("lang_code") or "").strip()
+            if lang_code:
+                data_json["lang_code"] = lang_code
+
+            # 服务端预处理：数字读法 / 多音字 / 分段，默认开
+            data_json["preprocess"] = bool(cfg.get("preprocess", True))
+
+            # 临时克隆：直接给参考音频路径，不落库
+            ref_audio = str(cfg.get("ref_audio") or "").strip()
+            if ref_audio:
+                data_json["ref_audio"] = ref_audio
+                ref_text = str(cfg.get("ref_text") or "").strip()
+                if ref_text:
+                    data_json["ref_text"] = ref_text
+
+            timeout = int(cfg.get("timeout") or 120)
+
+            logger.debug(f"custom_tts url={API_URL} data={data_json}")
+
+            return await self.download_audio(
+                "custom_tts", API_URL, timeout, "post", json_data=data_json, audio_suffix=audio_format
+            )
+        except Exception as e:
+            logger.error(traceback.format_exc())
+            logger.error(f'MLX Audio TTS 未知错误，请检查本地 mlx-audio-tts-service 是否启动/配置是否正确，报错内容: {e}')
+
+        return None

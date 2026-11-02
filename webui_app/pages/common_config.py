@@ -12,7 +12,7 @@ from webui_app.confirm import delete_button
 from webui_app.descriptions import show_card_desc
 from webui_app.errors import explain
 from webui_app.groups import GroupPicker
-from webui_app.helpers import AUDIO_SYNTHESIS_TYPE_OPTIONS, common_textarea_handle, textarea_data_change
+from webui_app.helpers import AUDIO_SYNTHESIS_TYPE_OPTIONS, common_textarea_handle, input_data_change, textarea_data_change
 from webui_app.options import (
     CHAT_TYPE_OPTIONS,
     LIVE_MONITOR_PLATFORM_KEYS,
@@ -572,21 +572,21 @@ def build_common_config_tab(config, common, card_css, switch_internal_css, butto
                 show_card_desc('点歌模式')
                 with ui.row():
                     switch_choose_song_enable = ui.switch('启用', value=config.get("choose_song", "enable")).style(switch_internal_css)
-                    textarea_choose_song_start_cmd = ui.textarea(
+                    input_choose_song_start_cmd = ui.input(
                         label='点歌触发命令', 
-                        value=textarea_data_change(config.get("choose_song", "start_cmd")), 
-                        placeholder='点歌触发命令，换行分隔，支持多个命令，弹幕发送触发（完全匹配才行）'
-                    ).style("width:200px;").tooltip('点歌触发命令，换行分隔，支持多个命令，弹幕发送触发（完全匹配才行）')
-                    textarea_choose_song_stop_cmd = ui.textarea(
+                        value=input_data_change(config.get("choose_song", "start_cmd")), 
+                        placeholder='如：点歌（多命令用逗号隔开）'
+                    ).style("width:200px;").tooltip('点歌触发命令，支持多个命令，弹幕发送触发（完全匹配才行）')
+                    input_choose_song_stop_cmd = ui.input(
                         label='取消点歌命令', 
-                        value=textarea_data_change(config.get("choose_song", "stop_cmd")), 
-                        placeholder='停止点歌命令，换行分隔，支持多个命令，弹幕发送触发（完全匹配才行）'
-                    ).style("width:200px;").tooltip('停止点歌命令，换行分隔，支持多个命令，弹幕发送触发（完全匹配才行）')
-                    textarea_choose_song_random_cmd = ui.textarea(
+                        value=input_data_change(config.get("choose_song", "stop_cmd")), 
+                        placeholder='如：取消点歌（多命令用逗号隔开）'
+                    ).style("width:200px;").tooltip('停止点歌命令，支持多个命令，弹幕发送触发（完全匹配才行）')
+                    input_choose_song_random_cmd = ui.input(
                         label='随机点歌命令', 
-                        value=textarea_data_change(config.get("choose_song", "random_cmd")), 
-                        placeholder='随机点歌命令，换行分隔，支持多个命令，弹幕发送触发（完全匹配才行）'
-                    ).style("width:200px;").tooltip('随机点歌命令，换行分隔，支持多个命令，弹幕发送触发（完全匹配才行）')
+                        value=input_data_change(config.get("choose_song", "random_cmd")), 
+                        placeholder='如：随机点歌（多命令用逗号隔开）'
+                    ).style("width:200px;").tooltip('随机点歌命令，支持多个命令，弹幕发送触发（完全匹配才行）')
                 with ui.row():
                     input_choose_song_song_path = ui.input(
                         label='歌曲路径', 
@@ -720,10 +720,10 @@ def build_common_config_tab(config, common, card_css, switch_internal_css, butto
                 with ui.row():
                     switch_search_online_enable = ui.switch('启用', value=config.get("search_online", "enable")).style(switch_internal_css) 
                     switch_search_online_keyword_enable = ui.switch('关键词触发', value=config.get("search_online", "keyword_enable")).style(switch_internal_css) 
-                    textarea_search_online_before_keyword = ui.textarea(
+                    input_search_online_before_keyword = ui.input(
                         label='关键词前缀', 
-                        placeholder='前缀必须携带其中任一字符串才能触发联网搜索\n例如：配置 【联网：】那么这个会触发：联网：杭州天气', 
-                        value=textarea_data_change(config.get("search_online", "before_keyword"))
+                        placeholder='如：联网：，触发联网搜索', 
+                        value=input_data_change(config.get("search_online", "before_keyword"))
                     ).style("width:200px;").tooltip('前缀必须携带其中任一字符串才能触发联网搜索\n例如：配置 【联网：】那么这个会触发：联网：杭州天气')
                     
                     select_search_online_engine = ui.select(
@@ -963,7 +963,7 @@ def build_common_config_tab(config, common, card_css, switch_internal_css, butto
                     input_sd_port = ui.input(label='端口', value=config.get("sd", "port"), placeholder='服务运行的端口').style("width:100px;")
                     input_sd_negative_prompt = ui.input(label='负面提示词', value=config.get("sd", "negative_prompt"), placeholder='负面文本提示，用于指定与生成图像相矛盾或相反的内容').style("width:200px;")
                     input_sd_seed = ui.input(label='随机种子', value=config.get("sd", "seed"), placeholder='随机种子，用于控制生成过程的随机性。可以设置一个整数值，以获得可重复的结果。').style("width:100px;")
-                    textarea_sd_styles = ui.textarea(label='图像风格', placeholder='样式列表，用于指定生成图像的风格。可以包含多个风格，例如 ["anime", "portrait"]', value=textarea_data_change(config.get("sd", "styles"))).style("width:200px;")
+                    input_sd_styles = ui.input(label='图像风格', placeholder='如 anime, portrait（多个逗号隔开）', value=input_data_change(config.get("sd", "styles"))).style("width:200px;")
                 with ui.row():
                     input_sd_cfg_scale = ui.input(label='提示词相关性', value=config.get("sd", "cfg_scale"), placeholder='提示词相关性，无分类器指导信息影响尺度(Classifier Free Guidance Scale) -图像应在多大程度上服从提示词-较低的值会产生更有创意的结果。').style("width:100px;")
                     input_sd_steps = ui.input(label='生成图像步数', value=config.get("sd", "steps"), placeholder='生成图像的步数，用于控制生成的精确程度。').style("width:100px;") 
@@ -1425,9 +1425,9 @@ def build_common_config_tab(config, common, card_css, switch_internal_css, butto
         if config.get("webui", "show_card", "common_config", "choose_song"):
             config_mapping["choose_song"] = {
                 "enable": (switch_choose_song_enable, 'bool'),
-                "start_cmd": (textarea_choose_song_start_cmd,'textarea'),
-                "stop_cmd": (textarea_choose_song_stop_cmd,'textarea'),
-                "random_cmd": (textarea_choose_song_random_cmd,'textarea'),
+                "start_cmd": (input_choose_song_start_cmd, 'textarea'),
+                "stop_cmd": (input_choose_song_stop_cmd, 'textarea'),
+                "random_cmd": (input_choose_song_random_cmd, 'textarea'),
                 "song_path": (input_choose_song_song_path,'str'),
                 "match_fail_copy": (input_choose_song_match_fail_copy,'str'),
                 "similarity": (input_choose_song_similarity,'float'),
@@ -1446,7 +1446,7 @@ def build_common_config_tab(config, common, card_css, switch_internal_css, butto
                 "port": (input_sd_port, 'int'),
                 "negative_prompt": (input_sd_negative_prompt, 'str'),
                 "seed": (input_sd_seed, 'float'),
-                "styles": (textarea_sd_styles, 'textarea'),
+                "styles": (input_sd_styles, 'textarea'),
                 "cfg_scale": (input_sd_cfg_scale, 'int'),
                 "steps": (input_sd_steps, 'int'),
                 "hr_resize_x": (input_sd_hr_resize_x, 'int'),
@@ -1463,7 +1463,7 @@ def build_common_config_tab(config, common, card_css, switch_internal_css, butto
             config_mapping["search_online"] = {
                 "enable": (switch_search_online_enable, 'bool'),
                 "keyword_enable": (switch_search_online_keyword_enable, 'bool'),
-                "before_keyword": (textarea_search_online_before_keyword, 'textarea'),
+                "before_keyword": (input_search_online_before_keyword, 'textarea'),
                 "engine": (select_search_online_engine, 'str'),
                 "engine_id": (input_search_online_engine_id, 'int'),
                 "count": (input_search_online_count, 'int'),

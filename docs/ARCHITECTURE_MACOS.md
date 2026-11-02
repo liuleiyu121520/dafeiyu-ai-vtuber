@@ -85,10 +85,11 @@
 
 ```
                     ┌──────────────────────────────┐
-   抖音直播间 ──────>│ 弹幕源（三选一）              │
-                    │  A. dy2 内置直连（推荐）      │
-                    │  B. 本机 WS Hub :8888（mock） │
-                    │  C. 外部采集器 → /inject      │
+   抖音直播间 ──────>│ 弹幕源（四选一）              │
+                    │  A. collector→/inject 推荐   │
+                    │  B. Hub:8888 + mock 注入     │
+                    │  C. 外部采集器 → /inject     │
+                    │  D. dy2 直连（绕过 Hub）     │
                     └──────────────┬───────────────┘
                                    │  统一 data_json
                     ┌──────────────▼───────────────┐
@@ -122,6 +123,16 @@
                     │  字幕（原 stage-captions.js）  │
                     └──────────────────────────────┘
 ```
+
+> **A 与 D 的区别**：A（`integrations/douyin/collector.py`）把弹幕喂给 Hub，
+> 走的仍是 `utils/platforms/dy.py` 这条与 Windows 完全一致的业务入口，
+> 礼物价格表、动态配置切换等既有行为全都在；D 要把 `PLATFORM` 改成 `dy2`，
+> 业务逻辑在 `dy2.py` 里另有一份。收真实弹幕优先 A，A 的 wss 握手被风控时
+> 才退回 D，或用 `.env` 的 `DY_WSS_URL` 覆盖抓包参数。
+>
+> 本节早期版本写「dy2 内置直连（推荐）」，与 `DOCKER_TROUBLESHOOTING.md` D4
+> 「推荐 dy + Hub」互相矛盾——那是 collector.py 出现之前留下的说法，现已统一：
+> 真实弹幕走 A，联调走 B。采集器用法见 `DOCKER_SETUP_MACOS.md` §3.5。
 
 ### 为什么是「替换 PlaybackStream」而不是「重写播放逻辑」
 

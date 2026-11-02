@@ -5,7 +5,7 @@ from nicegui import ui
 
 from utils.my_log import logger
 from webui_app.descriptions import show_card_desc
-from webui_app.helpers import common_textarea_handle, textarea_data_change
+from webui_app.helpers import common_textarea_handle, input_data_change, textarea_data_change
 from webui_app.pages import PageConfig
 
 
@@ -37,9 +37,10 @@ def build_llm_tab(config, common, card_css, switch_internal_css,
                   button_bottom_color, button_bottom_css, button_internal_color, button_internal_css):
     # openai 测试key可用性
     def test_openai_key():
+        keys = common_textarea_handle(input_openai_api_key.value)
         data_json = {
             "base_url": input_openai_api.value, 
-            "api_keys": textarea_openai_api_key.value, 
+            "api_keys": keys[0] if keys else input_openai_api_key.value, 
             "model": select_chatgpt_model.value,
             "temperature": round(float(input_chatgpt_temperature.value), 1),
             "max_tokens": int(input_chatgpt_max_tokens.value),
@@ -59,9 +60,11 @@ def build_llm_tab(config, common, card_css, switch_internal_css,
     async def search_chatgpt_models():
         button_chatgpt_model_search.set_enabled(False)
         try:
+            keys = common_textarea_handle(input_openai_api_key.value)
+            first_key = keys[0] if keys else input_openai_api_key.value
             # 这是个 blocking 的 requests，放线程里跑，别把整个 webui 的事件循环卡住
             resp_json = await asyncio.to_thread(
-                common.get_openai_models, input_openai_api.value, textarea_openai_api_key.value
+                common.get_openai_models, input_openai_api.value, first_key
             )
         finally:
             button_chatgpt_model_search.set_enabled(True)
@@ -97,8 +100,12 @@ def build_llm_tab(config, common, card_css, switch_internal_css,
                     validation={
                         '请输入正确格式的URL': lambda value: common.is_url_check(value),
                     }
-                ).style("width:200px;")
-                textarea_openai_api_key = ui.textarea(label='API密钥', placeholder='API KEY，支持代理', value=textarea_data_change(config.get("openai", "api_key"))).style("width:400px;")
+                ).style("width:260px;")
+                input_openai_api_key = ui.input(
+                    label='API密钥', 
+                    placeholder='API KEY，如 sk-...（多Key可用逗号或换行隔开）', 
+                    value=input_data_change(config.get("openai", "api_key"))
+                ).style("width:340px;")
                 button_openai_test = ui.button('测试', on_click=lambda: test_openai_key(), color=button_bottom_color).style(button_bottom_css)
             with ui.row():
                 chatgpt_models = [
@@ -530,17 +537,17 @@ def build_llm_tab(config, common, card_css, switch_internal_css,
             ui.label("自定义LLM")
             show_card_desc("自定义LLM")
             with ui.row():
-                textarea_custom_llm_url = ui.textarea(
+                input_custom_llm_url = ui.input(
                     label=f"API URL", 
                     value=config.get("custom_llm", "url"), 
                     placeholder='发送HTTP请求的API链接', 
                     validation={
                         '请输入正确格式的URL': lambda value: common.is_url_check(value),
                     }
-                ).style("width:200px;").tooltip('发送HTTP请求的API链接')
+                ).style("width:320px;").tooltip('发送HTTP请求的API链接')
                 textarea_custom_llm_method = ui.select(label=f"API类型", value=config.get("custom_llm", "method"), options={"GET": "GET", "POST": "POST"}).style("width:100px;").tooltip('API类型')
                 textarea_custom_llm_headers = ui.textarea(label=f"请求头", value=config.get("custom_llm", "headers"), placeholder='换行分隔，例：Content-Type:application/json\nAuthorization:Bearer sk').style("width:300px;").tooltip('换行分隔，例：Content-Type:application/json\nAuthorization:Bearer sk')
-                textarea_custom_llm_proxies = ui.textarea(label=f"代理", value=config.get("custom_llm", "proxies"), placeholder='requests库代理配置方法，json数据用"双引号').style("width:200px;").tooltip('requests库代理配置方法，json数据用"双引号')
+                input_custom_llm_proxies = ui.input(label=f"代理", value=config.get("custom_llm", "proxies"), placeholder='例：http://127.0.0.1:7890').style("width:200px;").tooltip('requests库代理配置方法')
             with ui.row():
                 select_custom_llm_body_type = ui.select(label=f"请求体类型", value=config.get("custom_llm", "body_type"), options={"json": "json", "raw": "raw"}).style("width:150px;").tooltip('请求体类型')
                 textarea_custom_llm_body = ui.textarea(label=f"请求体", value=config.get("custom_llm", "body"), placeholder='请求体，写字符串，注意变量需要两个大括号包裹{{}}，json数据的话用"双引号').style("width:300px;").tooltip('请求体，写字符串，注意变量需要两个大括号包裹{{}}，json数据的话用"双引号')
@@ -552,7 +559,7 @@ def build_llm_tab(config, common, card_css, switch_internal_css,
         if config.get("webui", "show_card", "llm", "chatgpt"):
             openai_config = config_data.setdefault("openai", {})
             openai_config["api"] = input_openai_api.value
-            openai_config["api_key"] = common_textarea_handle(textarea_openai_api_key.value)
+            openai_config["api_key"] = common_textarea_handle(input_openai_api_key.value)
 
     mapping = {}
     if config.get("webui", "show_card", "llm", "chatgpt"):
@@ -693,10 +700,10 @@ def build_llm_tab(config, common, card_css, switch_internal_css,
         }
     if config.get("webui", "show_card", "llm", "custom_llm"):
         mapping["custom_llm"] = {
-            "url": (textarea_custom_llm_url, 'str'),
+            "url": (input_custom_llm_url, 'str'),
             "method": (textarea_custom_llm_method, 'str'),
             "headers": (textarea_custom_llm_headers, 'str'),
-            "proxies": (textarea_custom_llm_proxies, 'str'),
+            "proxies": (input_custom_llm_proxies, 'str'),
             "body_type": (select_custom_llm_body_type, 'str'),
             "body": (textarea_custom_llm_body, 'str'),
             "resp_data_type": (select_custom_llm_resp_data_type, 'str'),

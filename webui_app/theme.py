@@ -9,10 +9,12 @@
 """
 import re
 
-INK = '#111827'
-INK_MUT = '#4b5563'
-# 链接色的按钮文字（区块芯片、「去配置」）：白底上 6.3:1，比默认 primary 的 3.06 高一倍
-LINK = '#2b5d9b'
+# Mistral 暖阳色板（design-md/mistral.ai/DESIGN.md）：近黑 ink、slate 次级灰。
+# 链接/强调色用 primary-deep 深橙——纯品牌橙 #fa520f 压白字只有 3.35:1 过不了 AA，
+# 深橙 #cc3a05 在白底 5.0:1、奶油底 4.7:1，作为文字色一律用它。
+INK = '#1f1f1f'
+INK_MUT = '#4a4a4a'
+LINK = '#cc3a05'
 
 
 def _luminance(rgb):
@@ -46,7 +48,7 @@ def _ratio(l1, l2):
 
 
 WHITE_L = _luminance((255, 255, 255))
-INK_L = _luminance((0x11, 0x18, 0x27))
+INK_L = _luminance((0x1f, 0x1f, 0x1f))
 
 
 def readable_on(background, dark=INK, light='#ffffff'):

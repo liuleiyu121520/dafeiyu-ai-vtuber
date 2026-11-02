@@ -286,3 +286,7 @@ docker/Dockerfile.test
 # 测试产物
 /tmp/*.png
 tests/**/__pycache__
+
+# macOS 系统文件
+.DS_Store
+*/.DS_Store

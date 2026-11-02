@@ -18,11 +18,11 @@ TICK = 0.5
 TRAY_CSS = 'width:100%;justify-content:center;align-items:center;pointer-events:none;'
 # 只有药丸本身吃点击：position='bottom' 的 QPageSticky 默认铺满整行，整条带不设
 # pointer-events:none 的话，底部这一横条会把压在下面的控件全挡住
-PILL_CSS = ('gap:10px;padding:7px 12px;border-radius:10px;background:#1f2937;'
+PILL_CSS = ('gap:10px;padding:7px 14px;border-radius:9999px;background:#1f1f1f;'
             'box-shadow:0 2px 10px rgba(0,0,0,0.30);pointer-events:auto;')
-LABEL_CSS = 'font-size:13px;color:#f9fafb;'
+LABEL_CSS = 'font-size:13px;color:#fffaeb;'
 # 按钮内联色必须带 !important：NiceGUI 给每个 ui.button 挂了 Quasar 的 text-primary
-BUTTON_CSS = 'font-size:13px;color:#fbbf24 !important;'
+BUTTON_CSS = 'font-size:13px;color:#ffb83e !important;'
 
 
 class UndoTray:

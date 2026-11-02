@@ -31,7 +31,7 @@ class ConfirmBox:
         self.dialog = dialog
         with dialog, ui.card().style('width:460px;max-width:92vw;padding:16px;'):
             self._title = ui.label('').style('font-size:15px;font-weight:600;')
-            self._detail = ui.label('').style('font-size:13px;color:#4b5563;margin-top:6px;')
+            self._detail = ui.label('').style('font-size:13px;color:#4a4a4a;margin-top:6px;')
             with ui.row().style('justify-content:flex-end;width:100%;margin-top:14px;'):
                 ui.button('取消', on_click=self._cancel).props('flat no-caps')
                 # 确认键不抢焦点，避免用户习惯性回车/空格直接执行危险操作

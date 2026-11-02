@@ -16,8 +16,8 @@ from nicegui.elements.tabs import TabPanel
 MIN_SECTIONS = 3
 MAX_CHIPS = 36
 
-INK_MUT = '#4b5563'
-INK = '#111827'
+INK_MUT = '#4a4a4a'
+INK = '#1f1f1f'
 
 # 8 大核心工作区的区块子分类规则：把扎堆散落的同类卡片精准收拢到对应业务小分类下
 PAGE_SUBGROUPS = {
@@ -41,7 +41,7 @@ PAGE_SUBGROUPS = {
         ('语音合成 (TTS)', [
             'tts 语音合成调试', '合成测试', 'edge-tts', 'vits-simple-api', 'bert_vits2',
             'elevenlabs', 'openai tts', 'gradio', 'gpt-sovits',
-            'azure_tts', 'cosyvoice', 'f5-tts', 'multitts', 'melotts', 'index-tts'
+            'azure_tts', 'cosyvoice', 'f5-tts', 'multitts', 'melotts', 'index-tts', 'mlx audio'
         ]),
         ('语音识别 (STT)', [
             '语音对话与拾音', '基本', '清除类型', '语音唤醒与睡眠', '对话打断',
@@ -195,25 +195,25 @@ def add_section_indexes(accent):
         result[panel_name] = sections
         grouped = _group_sections(panel_name, sections)
 
-        with ui.row().classes('section-index').style(
-                'position:sticky;top:0;z-index:30;'
-                'gap:5px;row-gap:6px;flex-wrap:wrap;align-items:center;padding:6px 10px;'
-                'background:rgba(255,255,255,0.92);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);'
-                'border-radius:10px;margin-bottom:12px;'
-                'border:1px solid rgba(229,231,235,0.85);box-shadow:0 2px 8px rgba(0,0,0,0.06);') as row:
+        with ui.column().classes('section-index').style(
+                'position:sticky;top:0;z-index:30;width:100%;'
+                'gap:6px;padding:8px 14px;'
+                'background:rgba(255,255,255,0.96);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);'
+                'border-radius:10px;margin-bottom:14px;'
+                'border:1px solid #e2e8f0;box-shadow:0 2px 8px rgba(15,23,42,0.04);') as row:
             ui.label('本页区块').style(
-                f'font-size:12px;font-weight:600;color:{INK_MUT};align-self:center;margin-right:2px;')
+                f'font-size:12px;font-weight:700;color:{INK_MUT};margin-bottom:2px;')
             for group_name, group_sections in grouped:
-                if group_name:
-                    ui.badge(group_name).props('outline rounded size=sm').style(
-                        f'font-size:11px;font-weight:600;color:{INK};border-color:#d1d5db;'
-                        'background:#ffffff;margin:0 2px 0 6px;padding:2px 8px;')
-                for name in group_sections:
-                    # flat 按钮在渐变面板上就是一串灰字，看不出能点：给个白药丸底
-                    ui.button(name, on_click=lambda target=name, a=accent: _scroll_to(target, a)).props(
-                        'flat dense no-caps size=xs').style(
-                        f'font-size:12px;color:{INK_MUT} !important;padding:2px 8px;'
-                        'background:rgba(255,255,255,0.88);border-radius:10px;'
-                        'box-shadow:0 1px 2px rgba(0,0,0,0.06);')
+                with ui.row().style('align-items:center;gap:6px;row-gap:6px;flex-wrap:wrap;width:100%;'):
+                    if group_name:
+                        ui.label(group_name).style(
+                            f'font-size:12px;font-weight:600;color:{INK};min-width:108px;'
+                            'margin:0 6px 0 0;flex-shrink:0;line-height:24px;')
+                    for name in group_sections:
+                        ui.button(name, on_click=lambda target=name, a=accent: _scroll_to(target, a)).props(
+                            'flat dense no-caps size=xs').style(
+                            'font-size:12px;color:#475569 !important;padding:2px 8px;'
+                            'background:#ffffff;border:1px solid #e2e8f0;border-radius:6px;'
+                            'box-shadow:0 1px 2px rgba(15,23,42,0.03);')
         row.move(panel, 0)
     return result

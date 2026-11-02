@@ -10,12 +10,15 @@
 *{box-sizing:border-box}html,body{width:100%;height:100%;margin:0;overflow:hidden;background:#081b35}
 body{display:grid;place-items:center}
 #stage{position:absolute;width:1920px;height:1080px;overflow:hidden;isolation:isolate;transform-origin:center center;background:#102e51 url('./assets/aquarium-landscape-20261028.png') center/cover no-repeat}
+/* 背景视频压在 PNG 兜底之上、角色之下；解码失败时视频不绘制，露出下面的静态图。 */
+#bg-video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0;pointer-events:none}
 #model-surface{position:absolute;width:900px;height:1040px;left:510px;top:-5px;transform:scale(1);transform-origin:0 0;z-index:2}
 #landlord{width:900px!important;height:1040px!important;margin:0;background:transparent}
 #live2d{width:900px!important;height:1040px!important;display:block}
 .message,#controller{display:none!important}
 </style></head><body>
 <main id="stage" data-layout="clean-landscape" aria-label="海底大厅直播场景">
+<video id="bg-video" src="./assets/aquarium-landscape-20261102.mp4" autoplay muted loop playsinline preload="auto" aria-hidden="true"></video>
 <div id="model-surface"><div id="landlord"><canvas id="live2d" class="live2d" width="1800" height="2080" aria-label="AI Live2D 角色"></canvas></div></div>
 </main>
 <script src="./js/jquery.min.js"></script>
@@ -26,6 +29,10 @@ body{display:grid;place-items:center}
 const stage=document.getElementById('stage');
 function fitStage(){stage.style.transform=`scale(${Math.min(innerWidth/1920,innerHeight/1080)})`;}
 addEventListener('resize',fitStage);fitStage();
+// 个别 CEF 版本不认 muted autoplay，数据就绪后再推一次；仍失败就安静地留在 PNG 兜底上。
+const bgVideo=document.getElementById('bg-video');
+const playBg=()=>bgVideo.play().catch(()=>{});
+bgVideo.addEventListener('loadeddata',playBg);playBg();
 </script><script src="./js/stage-captions.js?v=caption1"></script>
-<script src="./js/stage-overlay.js?v=overlay1"></script>
+<script src="./js/stage-overlay.js?v=overlay2-nothinking"></script>
 </body></html>

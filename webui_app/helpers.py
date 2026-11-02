@@ -8,9 +8,27 @@ def textarea_data_change(data):
     return "".join(f"{item}\n" for item in data)
 
 
+def input_data_change(data):
+    """把字符串列表转成单行输入框内容（逗号分隔或单个值）。"""
+    if data is None:
+        return ""
+    if isinstance(data, list):
+        return ", ".join(str(item) for item in data)
+    return str(data)
+
+
 def common_textarea_handle(content):
-    """把多行文本框内容转成去空行的字符串列表。"""
-    return [token.strip() for token in content.split("\n") if token.strip()]
+    """把多行或单行逗号文本框内容转成去空行的字符串列表。"""
+    if content is None:
+        return []
+    lines = [token.strip() for token in str(content).split("\n") if token.strip()]
+    out = []
+    for line in lines:
+        if ',' in line and not line.startswith('{') and not line.startswith('['):
+            out.extend([part.strip() for part in line.split(',') if part.strip()])
+        else:
+            out.append(line)
+    return out
 
 
 def select_value_or_none(value, options):
@@ -40,6 +58,9 @@ AUDIO_SYNTHESIS_TYPE_OPTIONS = {
     'multitts': 'MultiTTS',
     'melotts': 'MeloTTS',
     'index_tts': 'Index-TTS',
+    # 本地 MLX Audio TTS：Apple Silicon 上用 mlx-audio 在本机跑 Kokoro / Qwen3-TTS，
+    # 不用显卡、不用联网、不用 API Key（服务见 pre-study/mlx-audio-tts-service）。
+    'custom_tts': 'MLX Audio（本地 TTS）',
     # 离线 Mock TTS：按字数节奏生成的合成音，用来验证播放队列/口型/字幕时序。
     # 日志会明确标注「不是真实配音」。
     'mock_tts': 'Mock TTS（离线测试）',

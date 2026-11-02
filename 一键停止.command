@@ -4,7 +4,8 @@
 # 按顺序做：
 #   1. 先停主程序（让大肥鱼停止说话、清空播放队列）
 #   2. 再停容器（优雅关闭，最多等 20 秒）
-#   3. 检查有没有残留进程
+#   3. 停本地 TTS 服务
+#   4. 检查有没有残留进程
 #
 # 数据目录（log/ out/ data/ song/ bgm_cache/）不会被删。
 cd "$(dirname "$0")" || exit 1
@@ -45,7 +46,21 @@ else
     docker compose down >/dev/null 2>&1 || true
 fi
 
-# ---- 3. 残留检查 ----
+# ---- 3. 停本地 TTS 服务 ----
+if pgrep -f "mlx_tts_service serve" >/dev/null 2>&1; then
+    info "停止本地 TTS 服务..."
+    pkill -f "mlx_tts_service serve" 2>/dev/null || true
+    sleep 1
+    if pgrep -f "mlx_tts_service serve" >/dev/null 2>&1; then
+        warn "本地 TTS 服务还在（可能有别的进程在用它）"
+    else
+        ok "本地 TTS 服务已停止"
+    fi
+else
+    info "本地 TTS 服务没在跑"
+fi
+
+# ---- 4. 残留检查 ----
 LEFTOVER=$(docker ps -a --filter "name=dafeiyu" --format '{{.Names}}' 2>/dev/null | wc -l | tr -d ' ')
 if [ "$LEFTOVER" = "0" ]; then
     ok "无残留容器"

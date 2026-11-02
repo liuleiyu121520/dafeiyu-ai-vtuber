@@ -101,6 +101,9 @@ LLM_MODEL=glm-4.7-flash
 
 # 语音合成
 TTS_PROVIDER=edge-tts          # 免费；要本地 TTS 见 docs/LOCAL_TTS_GUIDE.md
+# 想完全本地、零 Key、零联网（Apple Silicon）：
+# TTS_PROVIDER=custom_tts
+# MLX_TTS_API=http://127.0.0.1:8788   # 配套服务：pre-study/mlx-audio-tts-service
 ```
 
 > 大模型跑在本机（Ollama / LM Studio / 其他网关）时，容器里要用

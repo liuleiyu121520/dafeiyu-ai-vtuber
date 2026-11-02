@@ -45,6 +45,7 @@ SHOW_CARD_NAMES = {
     'openai_tts': 'OpenAI TTS',
     'gpt_sovits': 'GPT-SoVITS',
     'azure_tts': 'Azure TTS',
+    'custom_tts': 'MLX Audio（本地 TTS）',
     'langchain_chatchat': 'Langchain_ChatChat',
     'Edge TTS': 'Edge-TTS',
     'VITS': 'VITS-Simple-API',

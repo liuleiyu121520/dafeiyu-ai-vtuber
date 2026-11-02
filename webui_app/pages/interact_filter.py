@@ -5,7 +5,7 @@
 """
 from nicegui import ui
 
-from webui_app.helpers import textarea_data_change
+from webui_app.helpers import input_data_change, textarea_data_change
 from webui_app.descriptions import show_card_desc
 from webui_app.pages import PageConfig
 
@@ -21,12 +21,12 @@ def build_interact_filter_tab(config, card_css, switch_internal_css):
         ui.label('过滤')    
         show_card_desc('过滤')
         with ui.grid(columns=6):
-            textarea_filter_before_must_str = ui.textarea(label='弹幕触发前缀', placeholder='前缀必须携带其中任一字符串才能触发\n例如：配置#，那么这个会触发：#你好', value=textarea_data_change(config.get("filter", "before_must_str"))).style("width:200px;").tooltip("前缀必须携带其中任一字符串才能触发\n例如：配置#，那么这个会触发：#你好")
-            textarea_filter_after_must_str = ui.textarea(label='弹幕触发后缀', placeholder='后缀必须携带其中任一字符串才能触发\n例如：配置。那么这个会触发：你好。', value=textarea_data_change(config.get("filter", "before_must_str"))).style("width:200px;").tooltip("后缀必须携带其中任一字符串才能触发\n例如：配置。那么这个会触发：你好。")
-            textarea_filter_before_filter_str = ui.textarea(label='弹幕过滤前缀', placeholder='当前缀为其中任一字符串时，弹幕会被过滤\n例如：配置#，那么这个会被过滤：#你好', value=textarea_data_change(config.get("filter", "before_filter_str"))).style("width:200px;").tooltip("当前缀为其中任一字符串时，弹幕会被过滤\n例如：配置#，那么这个会被过滤：#你好")
-            textarea_filter_after_filter_str = ui.textarea(label='弹幕过滤后缀', placeholder='当后缀为其中任一字符串时，弹幕会被过滤\n例如：配置#，那么这个会被过滤：你好#', value=textarea_data_change(config.get("filter", "before_filter_str"))).style("width:200px;").tooltip("当后缀为其中任一字符串时，弹幕会被过滤\n例如：配置#，那么这个会被过滤：你好#")
-            textarea_filter_before_must_str_for_llm = ui.textarea(label='LLM触发前缀', placeholder='前缀必须携带其中任一字符串才能触发LLM\n例如：配置#，那么这个会触发：#你好', value=textarea_data_change(config.get("filter", "before_must_str_for_llm"))).style("width:200px;").tooltip("前缀必须携带其中任一字符串才能触发LLM\n例如：配置#，那么这个会触发：#你好")
-            textarea_filter_after_must_str_for_llm = ui.textarea(label='LLM触发后缀', placeholder='后缀必须携带其中任一字符串才能触发LLM\n例如：配置。那么这个会触发：你好。', value=textarea_data_change(config.get("filter", "before_must_str_for_llm"))).style("width:200px;").tooltip('后缀必须携带其中任一字符串才能触发LLM\n例如：配置。那么这个会触发：你好。')
+            input_filter_before_must_str = ui.input(label='弹幕触发前缀', placeholder='如：#，多项逗号分隔', value=input_data_change(config.get("filter", "before_must_str"))).style("width:180px;").tooltip("前缀必须携带其中任一字符串才能触发\n例如：配置#，那么这个会触发：#你好")
+            input_filter_after_must_str = ui.input(label='弹幕触发后缀', placeholder='如：。，多项逗号分隔', value=input_data_change(config.get("filter", "after_must_str"))).style("width:180px;").tooltip("后缀必须携带其中任一字符串才能触发\n例如：配置。那么这个会触发：你好。")
+            input_filter_before_filter_str = ui.input(label='弹幕过滤前缀', placeholder='如：#，多项逗号分隔', value=input_data_change(config.get("filter", "before_filter_str"))).style("width:180px;").tooltip("当前缀为其中任一字符串时，弹幕会被过滤\n例如：配置#，那么这个会被过滤：#你好")
+            input_filter_after_filter_str = ui.input(label='弹幕过滤后缀', placeholder='如：#，多项逗号分隔', value=input_data_change(config.get("filter", "after_filter_str"))).style("width:180px;").tooltip("当后缀为其中任一字符串时，弹幕会被过滤\n例如：配置#，那么这个会被过滤：你好#")
+            input_filter_before_must_str_for_llm = ui.input(label='LLM触发前缀', placeholder='如：#，多项逗号分隔', value=input_data_change(config.get("filter", "before_must_str_for_llm"))).style("width:180px;").tooltip("前缀必须携带其中任一字符串才能触发LLM\n例如：配置#，那么这个会触发：#你好")
+            input_filter_after_must_str_for_llm = ui.input(label='LLM触发后缀', placeholder='如：。，多项逗号分隔', value=input_data_change(config.get("filter", "after_must_str_for_llm"))).style("width:180px;").tooltip('后缀必须携带其中任一字符串才能触发LLM\n例如：配置。那么这个会触发：你好。')
 
         # 这块原先是 ui.row()：flex 排出来的位置跟上下两块栅格对不上，看着就是每行错位一点
         with ui.grid(columns=6):
@@ -129,12 +129,12 @@ def build_interact_filter_tab(config, card_css, switch_internal_css):
 
     mapping = {
         "filter": {
-            "before_must_str": (textarea_filter_before_must_str, 'textarea'),
-            "after_must_str": (textarea_filter_after_must_str, 'textarea'),
-            "before_filter_str": (textarea_filter_before_filter_str, 'textarea'),
-            "after_filter_str": (textarea_filter_after_filter_str, 'textarea'),
-            "before_must_str_for_llm": (textarea_filter_before_must_str_for_llm, 'textarea'),
-            "after_must_str_for_llm": (textarea_filter_after_must_str_for_llm, 'textarea'),
+            "before_must_str": (input_filter_before_must_str, 'textarea'),
+            "after_must_str": (input_filter_after_must_str, 'textarea'),
+            "before_filter_str": (input_filter_before_filter_str, 'textarea'),
+            "after_filter_str": (input_filter_after_filter_str, 'textarea'),
+            "before_must_str_for_llm": (input_filter_before_must_str_for_llm, 'textarea'),
+            "after_must_str_for_llm": (input_filter_after_must_str_for_llm, 'textarea'),
             "badwords": {
                 "enable": (switch_filter_badwords_enable, 'bool'),
                 "discard": (switch_filter_badwords_discard, 'bool'),

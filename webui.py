@@ -178,6 +178,13 @@ if config.get("webui", "local_dir_to_endpoint", "enable"):
 # 对 main.py 暴露的 HTTP 接口，注册一次即可
 register_api(config, common, audio)
 
+# 自托管字体（Mistral 规范：Inter 承担全部 UI 文字，Newsreader 替代 PP Editorial Old
+# 做展示级衬线——商用授权字体拿不到，用同为「近衬线、编辑感」的开源 Newsreader 顶替，
+# 不走外链 CDN，内网/离线部署不缺字）
+_fonts_dir = Path(__file__).parent.resolve() / 'ui' / 'fonts'
+if _fonts_dir.is_dir():
+    app.add_static_files('/fonts', str(_fonts_dir))
+
 # 暗夜模式：五套主题全是按浅色设计的（深色字、白渐变卡），锁死浅色，
 # 不再跟随系统——深色系统下透明页面底会透出黑色画布，tab 条黑字直接隐身
 ui.dark_mode(False)
@@ -220,26 +227,114 @@ echart_css = config.get("webui", "theme", "list", theme_choose, "echart")
 dirty_guard = DirtyGuard()
 
 # 右下角两枚状态徽标的底样式。徽标是 ui.button，NiceGUI 会给它挂上 Quasar 的 text-primary，
-# 那是条 !important 规则，普通内联色压不过，所以状态色一律要带 !important（实测踩过）。
-PILL_CSS = ("font-size:12px;padding:4px 10px;border-radius:14px;background:#ffffff;"
-            "box-shadow:0 1px 4px rgba(0,0,0,0.18);color:{} !important;")
+# 那是条 !important 规则，普通内联色压不过，所以状态色一律要带 !important。
+PILL_CSS = ("font-size:12px;padding:5px 14px;border-radius:9999px;background:#ffffff;"
+            "border:1px solid #e2e8f0;box-shadow:0 2px 8px rgba(15,23,42,0.06);color:{} !important;"
+            "font-weight:500;transition:all .15s ease;")
 
 """
 页面级脚本与样式
 
 - .q-page 底部留白：浮在页面上的 .q-page-sticky 会挡住最后一行，留白由 ResizeObserver 跟着它们算
-- <900px 的流式化：定宽控件/卡片改成整行、网格降单列（实测 390 下 16 个 tab 从 11 个横向溢出降到 0 个）
+- <900px 的流式化：定宽控件/卡片改成整行、网格降单列
 - .narrow-tip：窄屏提示条，默认不显示，窗口 <900px 才显
-- ?tab= 深链：NiceGUI 是单页应用，16 个 tab 都挂在同一个 URL 上，
+- ?tab= 深链：NiceGUI 是单页应用，9 个 tab 都挂在同一个 URL 上，
   不写进地址栏就没法把「哪个配置页」发给别人，刷新也回不到原来那一页
 """
 PAGE_SCRIPTS = """
 <style>
-/* 页面外壳底色：html/body/布局层全是透明的，画布色由浏览器说了算——
-   深色浏览器/内核里整页透出黑色，tab 条的黑字直接隐身。给一层中性浅灰打底，
-   渐变面板和卡片都自带底色，不受影响（audit 后续走查） */
-html,body{background:#f1f5f9;}
+/* ============ 现代清爽科技设计体系（Modern Studio Console） ============
+   基调: 清爽高对比度、纯白卡片、浅灰底、精炼活力橙品牌色，统一规范排版。 */
+@font-face{font-family:Inter;font-style:normal;font-weight:100 900;font-display:swap;
+  src:url(/fonts/inter-var.woff2) format('woff2');}
+:root{
+  --luna-primary:#ea580c;        /* 品牌橙：活力温暖珊瑚橙 */
+  --luna-primary-deep:#c2410c;   /* 深橙：文字/链接强调色，白底与浅底 > 4.5:1 过 AA */
+  --luna-primary-hover:#f97316;  /* 悬停亮橙 */
+  --luna-ink:#0f172a;           /* 现代 Slate 900 纯正标题与正文 */
+  --luna-slate:#475569;         /* 次级文字 Slate 600 */
+  --luna-steel:#64748b;         /* 辅助与说明微文本 Slate 500 */
+  --luna-bg:#f8fafc;            /* 页面外壳底色：现代极简 Slate 50，告别发黄陈旧感 */
+  --luna-card-bg:#ffffff;       /* 纯白卡片背景 */
+  --luna-card-sub:#f8fafc;      /* 嵌套子卡片背景 */
+  --luna-border:#e2e8f0;        /* 细致描边 Slate 200 */
+  --luna-border-hover:#cbd5e1;  /* 悬停描边 Slate 300 */
+  --luna-radius-sm:6px;
+  --luna-radius-md:8px;
+  --luna-radius-lg:12px;
+}
+/* 页面外壳打底：现代清爽浅灰蓝底色，彻底告别老旧发黄纸张感 */
+html,body{background:var(--luna-bg);color:var(--luna-ink);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Inter,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+  font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased;}
 .q-page{padding-bottom:100px;}
+/* 浏览器原生面：选区、滚动条、焦点环都从现代色板走，精致干净 */
+::selection{background:rgba(234,88,12,0.18);color:var(--luna-ink);}
+*{scrollbar-width:thin;scrollbar-color:#cbd5e1 transparent;}
+::-webkit-scrollbar{width:8px;height:8px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:9999px;border:2px solid transparent;
+  background-clip:content-box;}
+::-webkit-scrollbar-thumb:hover{background:#94a3b8;background-clip:content-box;}
+/* 触控与点击目标统一规范 */
+.q-tab-panel .q-btn{min-height:34px;}
+.q-tab-panel .q-toggle{padding:4px 0;min-height:34px;}
+.q-tab-panel a.nicegui-link{min-height:28px;display:inline-flex;align-items:center;color:var(--luna-primary-deep);}
+/* 动效偏好：尊重系统「减少动态效果」 */
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{transition-duration:0.01ms !important;animation-duration:0.01ms !important;
+    scroll-behavior:auto !important;}
+}
+/* 键盘焦点环：Quasar 聚焦还给键盘用户 */
+.q-btn:focus-visible,.q-tab:focus-visible,.q-toggle:focus-visible .q-checkbox__inner,
+input:focus-visible,textarea:focus-visible,.q-field__native:focus-visible{
+  outline:2px solid var(--luna-primary);outline-offset:2px;}
+/* ---- 卡片：纯白底、12px 圆角、细致发丝边框与柔和微阴影 ---- */
+.q-tab-panel .q-card{border-radius:var(--luna-radius-lg);border:1px solid var(--luna-border);
+  background:var(--luna-card-bg);box-shadow:0 1px 3px rgba(15,23,42,0.04);
+  transition:box-shadow .2s ease,border-color .2s ease;}
+.q-tab-panel .q-card:hover{border-color:var(--luna-border-hover);box-shadow:0 4px 14px rgba(15,23,42,0.06);}
+/* 卡片首行标题：统一现代无衬线粗体，字号 16px/600，杜绝老式衬线体割裂感 */
+.q-tab-panel .q-card > div:first-child:not([class]),
+.q-tab-panel .q-expansion-item > .q-expansion-item__container > .q-item .q-item__label{
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif !important;
+  font-size:16px;font-weight:600;letter-spacing:-0.01em;color:var(--luna-ink);}
+/* 卡片描述行（descriptions.show_card_desc 挂的 luna-desc） */
+.q-tab-panel .luna-desc{font-size:13px;color:var(--luna-steel);line-height:1.5;margin-bottom:6px;}
+/* ---- 按钮：8px 圆角，规范高度与层级 ---- */
+.q-tab-panel .q-btn,.q-page-sticky .q-btn{border-radius:var(--luna-radius-md);font-weight:500;
+  transition:filter .15s ease,background-color .15s ease,box-shadow .15s ease,transform .1s ease;}
+.q-tab-panel .q-btn--standard:hover,.q-page-sticky .q-btn--standard:hover{filter:brightness(0.96);transform:translateY(-1px);}
+.q-tab-panel .q-btn--standard:active,.q-page-sticky .q-btn--standard:active{filter:brightness(0.90);transform:translateY(0);}
+/* flat 按钮悬停背景 */
+.q-tab-panel .q-btn--flat:hover,.luna-nav .q-btn--flat:hover{background:#f1f5f9;}
+/* primary 实底按钮 */
+.q-btn.bg-primary{color:#ffffff !important;background-color:var(--luna-primary) !important;}
+.q-btn[style*="234, 88, 12"],.q-btn[style*="204, 58, 5"],.q-btn[style*="31, 31, 31"]{color:#ffffff !important;}
+/* ---- 输入控件：纯白底、40px 高、清晰细边框，聚焦现代高亮 ---- */
+.q-tab-panel .q-field--outlined .q-field__control{border-radius:var(--luna-radius-md);
+  background:#ffffff;min-height:40px;height:40px;transition:border-color .15s ease,box-shadow .15s ease;}
+.q-tab-panel .q-textarea .q-field__control{height:auto;min-height:40px;}
+.q-tab-panel .q-field__control:before{border:1px solid var(--luna-border) !important;transition:border-color .15s ease;}
+.q-tab-panel .q-field--outlined:hover .q-field__control:before{border-color:var(--luna-border-hover) !important;}
+.q-tab-panel .q-field--focused .q-field__control:after{border-color:var(--luna-primary) !important;border-width:2px !important;}
+.q-tab-panel .q-field--focused{box-shadow:0 0 0 3px rgba(234,88,12,0.12);border-radius:var(--luna-radius-md);}
+.q-tab-panel .q-field--filled .q-field__control{background:#f8fafc;}
+.q-tab-panel .q-field__label{color:var(--luna-slate);font-size:13px;font-weight:500;}
+.q-tab-panel .q-field--focused .q-field__label{color:var(--luna-primary-deep);}
+/* 开关/勾选选中色 */
+.q-tab-panel .q-toggle__thumb--truthy{color:var(--luna-primary);}
+.q-tab-panel .q-toggle__track--truthy{background:rgba(234,88,12,0.35);}
+/* ---- 提示条：现代清新风格，告别脏黄色 ---- */
+.tip-bar{padding:10px 16px;border-radius:var(--luna-radius-md);background:#eff6ff;
+  border:1px solid #bfdbfe;border-left:4px solid #3b82f6;
+  font-size:13px;line-height:1.6;color:#1e40af;}
+/* ---- 折叠区标题加一点分量 ---- */
+.q-tab-panel .q-expansion-item > .q-expansion-item__container > .q-item{font-weight:600;}
+.q-tab-panel .q-item{border-radius:var(--luna-radius-md);}
+/* 对话框/菜单也吃同一套几何 */
+.q-dialog .q-card,.q-menu .q-card{border-radius:var(--luna-radius-lg);box-shadow:0 10px 25px -5px rgba(15,23,42,0.12);}
+.q-notification{border-radius:var(--luna-radius-md);box-shadow:0 4px 12px rgba(15,23,42,0.1);}
 </style>
 <script>
 // 底部留白跟着操作条的真实高度走。写死一个数迟早被超：这条栏会随展开/收起、
@@ -270,33 +365,28 @@ html,body{background:#f1f5f9;}
 </script>
 <style>
 .narrow-tip{display:none !important;}
-/* 字段下方的常驻 helper（走查 audit-19）：原来这些解释写在 placeholder 里，一输入就消失。
-   挪到 hint 之后要保留原文的换行，否则 Gradio「请求参数」那种多行格式说明会挤成一行。
-   Quasar 默认的 hint 色是 rgba(0,0,0,0.54)，在白纸上只有 4.6:1，落在渐变卡片上就掉到 3.7:1，
-   过不了 AA，所以固定成 INK_MUT；报错文字走 .q-field--error 那条规则，不在这次覆盖范围内。
-   .q-field__bottom--animated 是个绝对定位 + translateY(100%) 的抽屉，只在聚焦/报错时滑出来；
-   常驻说明得让它回到常规流自己长高，否则两三行文字直接压到下一行字段上（实测按键映射页整片重叠）。
-   只带 has-persistent-hint 标记的字段这么改，别的字段保留原来的抽屉行为。 */
-.q-tab-panel .q-field__messages{white-space:pre-line;}
-.q-tab-panel .has-persistent-hint .q-field__bottom--animated{position:static;transform:none;}
-.q-tab-panel .q-field:not(.q-field--error) .q-field__messages{color:#4b5563;}
-/* 卡片是 align-items:flex-start 的纵向 flex：里面的栅格只会按「自己内容」收缩，
-   同一张卡里两块栅格因此列宽不同（实测 834 vs 1064），字段纵向对不齐、右侧还留一大块空洞
-   （走查 audit-11/12/26 的同一个根因）。给满宽，列宽才由卡片决定而不是由内容决定。 */
+/* 顶部工作区导航：纯白微透质感 + 细描边，吸顶常驻 */
+.luna-nav{background:rgba(255,255,255,0.96);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--luna-border);padding:8px 20px !important;
+  box-shadow:0 1px 3px rgba(15,23,42,0.04);position:sticky;top:0;z-index:50;}
+.luna-nav .q-btn{font-size:13px !important;font-weight:500 !important;padding:6px 12px !important;
+  min-height:34px !important;border-radius:8px !important;}
+/* 字段下方的说明微文本：排版紧凑清晰，统一最多两行排版，杜绝七八行竖向撑爆栅格 */
+.q-tab-panel .q-field__messages{
+  white-space:normal;font-size:11px !important;line-height:1.35 !important;
+  color:var(--luna-steel);margin-top:2px;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;
+  overflow:hidden;text-overflow:ellipsis;max-height:32px;
+}
+.q-tab-panel .q-field:hover .q-field__messages{
+  color:var(--luna-slate);
+}
+.q-tab-panel .has-persistent-hint .q-field__bottom--animated{position:static;transform:none;padding:2px 4px 0 4px;}
+.q-tab-panel .q-field:not(.q-field--error) .q-field__messages{color:var(--luna-steel);}
+/* 卡片是 align-items:flex-start 的纵向 flex：给满宽，列宽由卡片决定 */
 .q-tab-panel .q-card > .nicegui-grid{width:100%;}
-/* 面板直接子卡也随内容收缩，同一页卡片就一条边对不齐（实测大语言模型页 870 vs 1070）。
-   只拉直接子卡：卡里嵌的小卡（开放平台那种）保持内容宽，不然四五个字段撑一大块白 */
 .q-tab-panel > .q-card{width:100%;}
-/* 提示条：原先三处写死 Tailwind 的 bg-blue-100，换深色主题就成了一块突兀的浅蓝。
-   半透明白底 + 左侧色条，在渐变背景和卡片上都读得清 */
-.tip-bar{padding:8px 12px;border-radius:8px;background:rgba(255,255,255,0.72);
-         border-left:3px solid #2f6fad;box-shadow:0 1px 3px rgba(0,0,0,0.10);
-         font-size:13px;line-height:1.6;color:#1f3552;}
-/* 字段宽度 token（走查 audit-13）：实测全站 26 种内联像素宽度（200×248、100×188、153×70、
-   300×99…），同一含义的字段在不同页宽度不一样、同一张卡里相邻两行也对不齐。
-   555 处 .style('width:XXXpx') 逐个改不现实，这里用属性选择器把它们吸到 4 档刻度：
-   120 / 200 / 300 / 520；max-width:100% 保证吸宽之后不会把网格顶出容器。
-   窄屏的整行覆盖写在后面的媒体查询里，顺序决定谁赢。 */
+/* 字段宽度统一阶梯规范：130 / 220 / 340 / 560 四档标准阶梯 */
 .q-tab-panel .q-field{max-width:100%;}
 .q-tab-panel .q-field[style*="width: 50px"],
 .q-tab-panel .q-field[style*="width: 64px"],
@@ -305,7 +395,7 @@ html,body{background:#f1f5f9;}
 .q-tab-panel .q-field[style*="width: 97px"],
 .q-tab-panel .q-field[style*="width: 100px"],
 .q-tab-panel .q-field[style*="width: 106px"],
-.q-tab-panel .q-field[style*="width: 120px"]{width:120px !important;}
+.q-tab-panel .q-field[style*="width: 120px"]{width:130px !important;}
 .q-tab-panel .q-field[style*="width: 150px"],
 .q-tab-panel .q-field[style*="width: 153px"],
 .q-tab-panel .q-field[style*="width: 155px"],
@@ -315,19 +405,145 @@ html,body{background:#f1f5f9;}
 .q-tab-panel .q-field[style*="width: 189px"],
 .q-tab-panel .q-field[style*="width: 200px"],
 .q-tab-panel .q-field[style*="width: 215px"],
-.q-tab-panel .q-field[style*="width: 250px"]{width:200px !important;}
+.q-tab-panel .q-field[style*="width: 250px"]{width:220px !important;}
 .q-tab-panel .q-field[style*="width: 300px"],
 .q-tab-panel .q-field[style*="width: 320px"],
 .q-tab-panel .q-field[style*="width: 350px"],
-.q-tab-panel .q-field[style*="width: 400px"]{width:300px !important;}
+.q-tab-panel .q-field[style*="width: 400px"]{width:340px !important;}
 .q-tab-panel .q-field[style*="width: 500px"],
 .q-tab-panel .q-field[style*="width: 700px"],
 .q-tab-panel .q-field[style*="width: 800px"],
-.q-tab-panel .q-field[style*="width: 1000px"]{width:520px !important;}
+.q-tab-panel .q-field[style*="width: 1000px"]{width:560px !important;}
+/* ============ Top-Label 表单系统（上面 Label，下面 Input，彻底消灭框内挤迫感） ============ */
+.q-tab-panel .q-field--labeled {
+  padding-top: 24px !important;
+  position: relative !important;
+  overflow: visible !important;
+}
+.q-tab-panel .q-field--labeled .q-field__inner {
+  position: relative !important;
+  overflow: visible !important;
+}
+.q-tab-panel .q-field--labeled .q-field__control {
+  overflow: visible !important;
+  border: 1px solid #cbd5e1 !important;
+  border-radius: 6px !important;
+  background: #ffffff !important;
+  min-height: 38px !important;
+  height: 38px !important;
+  padding: 0 10px !important;
+  transition: border-color .15s ease, box-shadow .15s ease !important;
+}
+/* 去除 Quasar 原生 outlined / standard 边框与缺口干扰 */
+.q-tab-panel .q-field--labeled .q-field__control:before,
+.q-tab-panel .q-field--labeled .q-field__control:after {
+  display: none !important;
+}
+/* 获得焦点时现代微光外环 */
+.q-tab-panel .q-field--focused .q-field__control {
+  border-color: var(--luna-primary) !important;
+  box-shadow: 0 0 0 3px rgba(234, 88, 12, 0.14) !important;
+}
+/* 标签放在输入框正上方外部，左沿与输入框外边框严格对齐 */
+.q-tab-panel .q-field--labeled .q-field__label {
+  position: absolute !important;
+  top: -24px !important;
+  left: -11px !important;
+  transform: none !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  color: #334155 !important;
+  line-height: 20px !important;
+  letter-spacing: 0.01em !important;
+  pointer-events: none !important;
+  z-index: 10 !important;
+  white-space: nowrap !important;
+}
+.q-tab-panel .q-field--focused .q-field__label {
+  color: var(--luna-primary) !important;
+}
+/* 彻底清除 Quasar 在 labeled 模式下 control-container 自带的 24px 顶部 padding，
+   确保下拉菜单（q-select）选中的值文本与原生输入框严格垂直居中在 38px 容器内，绝不下坠溢出 */
+.q-tab-panel .q-field--labeled .q-field__control-container {
+  padding-top: 0 !important;
+  align-items: center !important;
+}
+/* 单行原生输入框垂直居中 */
+.q-tab-panel .q-field--labeled .q-field__native {
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  height: 36px !important;
+  line-height: 36px !important;
+  font-size: 13px !important;
+  color: #0f172a !important;
+}
+/* 下拉菜单单选选中文本对齐并居中 */
+.q-tab-panel .q-select.q-field--labeled .q-field__native {
+  min-height: 36px !important;
+  height: 36px !important;
+  line-height: 36px !important;
+  align-items: center !important;
+  padding: 0 !important;
+}
+.q-tab-panel .q-select.q-field--labeled .q-field__native span {
+  line-height: 36px !important;
+}
+/* 下拉框与输入框的附带图标容器（下拉箭头、清空按钮等）垂直居中对齐 */
+.q-tab-panel .q-field__marginal {
+  height: 38px !important;
+  min-height: 38px !important;
+  align-items: center !important;
+  padding: 0 4px !important;
+}
+.q-tab-panel .q-field__marginal .q-icon {
+  font-size: 20px !important;
+  line-height: 1 !important;
+}
+/* 多行文本框 textarea 自适应高度 */
+.q-tab-panel .q-textarea.q-field--labeled .q-field__control {
+  min-height: 80px !important;
+  height: auto !important;
+}
+.q-tab-panel .q-textarea.q-field--labeled .q-field__native {
+  min-height: 64px !important;
+  height: auto !important;
+  line-height: 1.5 !important;
+  padding: 6px 0 !important;
+}
+/* 辅助说明与提示信息（bottom / hint）排在输入框下方 */
+.q-tab-panel .q-field__bottom {
+  padding: 4px 0 0 0 !important;
+  font-size: 12px !important;
+  color: #64748b !important;
+  line-height: 1.4 !important;
+}
+/* 行内节奏与垂直基线：flex-start 对齐顶部 */
+.q-tab-panel .nicegui-row:not([class*="gap-"]){gap:12px 16px;align-items:flex-start;margin-bottom:8px;}
+/* 对齐同行按钮与开关：当行内有带 label 的输入框时，给没有 label 的按钮和开关补上 24px 顶部距离，与输入框本体对齐 */
+.q-tab-panel .nicegui-row:has(.q-field--labeled) > .q-btn,
+.q-tab-panel .nicegui-grid:has(.q-field--labeled) > .q-btn {
+  margin-top: 24px !important;
+  min-height: 38px !important;
+  height: 38px !important;
+  align-self: flex-start !important;
+}
+.q-tab-panel .nicegui-row:has(.q-field--labeled) > .q-toggle,
+.q-tab-panel .nicegui-grid:has(.q-field--labeled) > .q-toggle {
+  margin-top: 24px !important;
+  min-height: 38px !important;
+  height: 38px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  align-self: flex-start !important;
+  padding: 0 4px !important;
+}
+/* 嵌套卡片降一档现代 Slate-50 底色与细描边，层级鲜明 */
+.q-tab-panel .q-card .q-card{background:var(--luna-card-sub) !important;
+  border-color:var(--luna-border) !important;box-shadow:none !important;}
 @media (max-width:899px){
   .narrow-tip{display:flex !important;}
-  /* 页面里 850 多处 .style('width:XXXpx') 不可能逐个改，窄屏用样式表的 !important
-     覆盖内联宽度，是代价最小的流式化做法：定宽控件降成整行，卡片和按钮最多撑满一行 */
+  /* 窄屏用样式表 !important 覆盖内联宽度：定宽控件降整行，卡片和按钮最多撑满一行 */
+  .q-tab-panel .q-field{min-width:0 !important;}
   .q-tab-panel .q-field,
   .q-tab-panel .q-img,
   .q-tab-panel img,
@@ -336,40 +552,37 @@ html,body{background:#f1f5f9;}
   .q-tab-panel .q-table{width:100% !important;max-width:100% !important;}
   .q-tab-panel .q-card{width:100% !important;max-width:100% !important;}
   .q-tab-panel .q-btn{max-width:100%;}
-  /* flex 子项默认 min-width:auto，里面只要有一个定宽控件就会把整行顶出视口；
-     NiceGUI 的 row/column 落到 DOM 是 .nicegui-row / .nicegui-column，不是 q-row */
+  /* flex 子项默认 min-width:auto，有一个定宽控件就会把整行顶出视口；
+     NiceGUI 的 row/column 落到 DOM 是 .nicegui-row / .nicegui-column */
   .q-tab-panel .nicegui-row > *,
   .q-tab-panel .nicegui-column > *{min-width:0;}
   .q-tab-panel .nicegui-grid{grid-template-columns:1fr !important;}
-  /* 开关/勾选框被挤窄时「启用」会竖排成两行，这类控件保持自身宽度、标签不折行 */
+  /* 开关/勾选框被挤窄时「启用」会竖排两行，这类控件保持自身宽度、标签不折行 */
   .q-tab-panel .q-toggle,
   .q-tab-panel .q-checkbox,
   .q-tab-panel .q-radio{flex:none;}
   .q-tab-panel .q-q-item__label{white-space:nowrap;}
   .q-tab-panel pre{overflow-x:auto;max-width:100%;}
-  /* 区块索引在窄屏收成一行横向滑，21 个芯片竖着排能占掉半屏；
-     必须同时压住宽度，否则 nowrap 会让这一行自己把面板顶宽 */
+  /* 区块索引窄屏收成一行横向滑，同时压住宽度，否则 nowrap 会把面板顶宽 */
   .section-index{flex-wrap:nowrap !important;overflow-x:auto;
                  width:100% !important;max-width:100% !important;min-width:0;}
-  /* 芯片本身不能被压缩，否则一行 21 个会被挤成一列一个字 */
   .section-index > *{flex:none;}
-  /* 平铺页面导航同理：29 个页面在窄屏折行要占七八行，收成横向滑 */
+  /* 平铺页面导航同理：收成横向滑 */
   .luna-nav{flex-wrap:nowrap !important;overflow-x:auto;}
   .luna-nav > *{flex:none;}
-  /* 图表容器的 height:600px 写在主题里（width:100%;height:600px），390 下饼图被裁、
-     图例挤出卡片：改成按宽度等比，ECharts 自己有 ResizeObserver 会重排 */
+  /* 图表容器 height:600px 写在主题里，窄屏改按宽度等比，ECharts 自己会重排 */
   .nicegui-echart{height:auto !important;aspect-ratio:1/1;max-height:70vh;}
 }
-/* 「只看已启用」（走查 audit-9）：藏只靠 tab_panels 上的 luna-only-on 命中卡上的 luna-off-card，
-   控件的 visible 一直是 True，所以全局搜索与未保存清单照旧收得到被藏起来的项
-   ——跳过去时先自动取消过滤。权重压过 .q-card 自己的 display:flex，不用 !important。 */
+/* 「只看已启用」：藏只靠 tab_panels 上的 luna-only-on 命中卡上的 luna-off-card，
+   控件 visible 一直是 True，搜索与未保存清单照旧收得到被藏项——跳转前先自动取消过滤。
+   权重压过 .q-card 自己的 display:flex，不用 !important。 */
 .luna-only-on .luna-off-card{display:none;}
-/* 整页被藏光时补一句解释（走查 audit-9）：点歌页只有一张未启用的卡，过滤后什么都不剩，
-   看上去就是页面坏了。文字写在样式表里，服务端只负责给面板挂 luna-panel-empty。 */
+/* 整页被藏光时补一句解释，文字写在样式表里，服务端只负责挂 luna-panel-empty */
 .luna-only-on .luna-panel-empty::after{content:'这一页的功能都没启用，所以没有可显示的卡片；'
     '关掉上面的「只看已启用」就能看到全部配置。';
-    display:block;margin-top:8px;padding:14px 16px;border-radius:8px;background:#f3f4f6;
-    color:#4b5563;font-size:13px;line-height:1.6;}
+    display:block;margin-top:8px;padding:14px 16px;border-radius:var(--luna-radius-md);
+    background:var(--luna-cream-soft);border:1px solid var(--luna-beige);
+    color:var(--luna-slate);font-size:13px;line-height:1.6;}
 /* 区块索引栏吸顶与卡片跳转防遮挡偏移量 */
 .q-tab-panel .q-card,
 .q-tab-panel .q-expansion-item {
@@ -534,7 +747,7 @@ def goto_func_page():
     # 窄屏提示：定宽控件在 <900px 已被上面那段样式表改成单列，不再裁；
     # 这条只说明「窄屏能看到的东西少」，别再写会被裁掉那种已经不实的话
     with ui.row().style(
-            'background:#fef3c7;color:#78350f;padding:8px 14px;border-radius:8px;'
+            'background:#fff0c2;color:#5c4a1e;padding:8px 14px;border-radius:8px;border:1px solid #e6d5a8;'
             'justify-content:center;align-items:center;margin:0 10px 6px;').classes('narrow-tip'):
         ui.label('窄屏已自动改成单列，配置项多时要滚很久；能放宽窗口就放宽，一屏能看到更多。') \
             .style('font-size:13px;')
@@ -655,17 +868,22 @@ def goto_func_page():
             return
         run_state_shown = on
         run_badge.set_text('● 直播程序运行中' if on else '○ 直播程序未运行')
-        run_badge.style(PILL_CSS.format('#16a34a' if on else '#4b5563'))
+        run_badge.style(PILL_CSS.format('#15803d' if on else '#6a6a6a'))
 
     with ui.page_sticky(position="bottom-right", x_offset=12, y_offset=12):
         with ui.column().style("align-items:flex-end;gap:8px;"):
             # 角标做成真按钮：点开「哪些项还没保存、现在是什么值」的清单（story-2 验收标准）
             dirty_badge = ui.button('● 配置已保存', on_click=dirty_guard.open_list).props(
-                'flat no-caps dense').style(PILL_CSS.format('#16a34a')).tooltip('点开看哪些项还没保存')
+                'flat no-caps dense').style(PILL_CSS.format('#15803d')).tooltip('点开看哪些项还没保存')
             run_badge = ui.button('○ 直播程序未运行', on_click=lambda: select_tab(OVERVIEW)).props(
-                'flat no-caps dense').style(PILL_CSS.format('#4b5563')).tooltip('到总览页看开播就绪度')
+                'flat no-caps dense').style(PILL_CSS.format('#6a6a6a')).tooltip('到总览页看开播就绪度')
 
-            with ui.row().style("flex-wrap:wrap;justify-content:flex-end;gap:6px;") as ops_row:
+            with ui.row().style(
+                    "flex-wrap:wrap;justify-content:flex-end;gap:6px;"
+                    "background:rgba(255,255,255,0.96);backdrop-filter:blur(12px);"
+                    "border:1px solid #e2e8f0;border-radius:12px;padding:6px 10px;"
+                    "box-shadow:0 8px 24px rgba(15,23,42,0.12);"
+            ) as ops_row:
                 button_save = ui.button('保存配置', on_click=lambda: save_config(), color=button_bottom_color).style(button_bottom_css).tooltip("保存webui的配置到本地文件，有些配置保存后需要重启生效")
                 button_run = ui.button('一键运行', on_click=lambda: run_external_program(config), color=button_bottom_color).style(button_bottom_css).tooltip("运行main.py")
                 # 创建一个按钮，用于停止正在运行的程序
@@ -677,7 +895,12 @@ def goto_func_page():
                 button_restart = ui.button('重启', on_click=ask_restart, color=button_bottom_color).style(button_bottom_css).tooltip("停止运行main.py并重启webui")
             ops_row.set_visibility(False)
 
-            with ui.row().style("align-items:center;gap:6px;"):
+            with ui.row().style(
+                    "align-items:center;gap:6px;"
+                    "background:rgba(255,255,255,0.96);backdrop-filter:blur(12px);"
+                    "border:1px solid #e2e8f0;border-radius:9999px;padding:4px 8px;"
+                    "box-shadow:0 4px 16px rgba(15,23,42,0.08);"
+            ):
                 button_top = ui.button('回到顶部', icon='keyboard_arrow_up', on_click=lambda: scroll_to_top(), color=button_bottom_color).style(button_bottom_css).tooltip("平滑滚动到页面顶部")
                 button_ops = ui.button('操作', icon='settings', on_click=switch_ops, color=button_bottom_color).style(button_bottom_css)
 

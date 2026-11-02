@@ -1,7 +1,7 @@
 """积分页：签到、礼物、入场与增删改查配置。"""
 from nicegui import ui
 
-from webui_app.helpers import common_textarea_handle, textarea_data_change
+from webui_app.helpers import common_textarea_handle, input_data_change, textarea_data_change
 from webui_app.descriptions import show_card_desc
 from webui_app.pages import PageConfig
 
@@ -18,7 +18,7 @@ def build_integral_tab(config, card_css, switch_internal_css):
         with ui.grid(columns=3):
             switch_integral_sign_enable = ui.switch('启用', value=config.get("integral", "sign", "enable")).style(switch_internal_css)
             input_integral_sign_get_integral = ui.input(label='获得积分数', value=config.get("integral", "sign", "get_integral"), placeholder='签到成功可以获得的积分数，请填写正整数！')
-            textarea_integral_sign_cmd = ui.textarea(label='命令', value=textarea_data_change(config.get("integral", "sign", "cmd")), placeholder='弹幕发送以下命令可以触发签到功能，换行分隔命令')
+            input_integral_sign_cmd = ui.input(label='命令', value=input_data_change(config.get("integral", "sign", "cmd")), placeholder='如：签到, 打卡（多命令用逗号隔开）')
         with ui.card().style(card_css):
             ui.label("文案")
             integral_sign_copywriting_var = {}
@@ -57,7 +57,7 @@ def build_integral_tab(config, card_css, switch_internal_css):
             ui.label("查询")
             with ui.grid(columns=3):
                 switch_integral_crud_query_enable = ui.switch('启用', value=config.get("integral", "crud", "query", "enable")).style(switch_internal_css)
-                textarea_integral_crud_query_cmd = ui.textarea(label="命令", value=textarea_data_change(config.get("integral", "crud", "query", "cmd")), placeholder='弹幕发送以下命令可以触发查询功能，换行分隔命令')
+                input_integral_crud_query_cmd = ui.input(label="命令", value=input_data_change(config.get("integral", "crud", "query", "cmd")), placeholder='如：查询, 查积分（多命令用逗号隔开）')
                 textarea_integral_crud_query_copywriting = ui.textarea(label="文案", value=textarea_data_change(config.get("integral", "crud", "query", "copywriting")), placeholder='触发查询功能后返回的文案内容，换行分隔命令').style("width:400px;")
 
     def save_integral(config_data):
@@ -68,7 +68,7 @@ def build_integral_tab(config, card_css, switch_internal_css):
         sign = integral.setdefault("sign", {})
         sign["enable"] = switch_integral_sign_enable.value
         sign["get_integral"] = int(input_integral_sign_get_integral.value)
-        sign["cmd"] = common_textarea_handle(textarea_integral_sign_cmd.value)
+        sign["cmd"] = common_textarea_handle(input_integral_sign_cmd.value)
         sign["copywriting"] = [
             {
                 "sign_num_interval": integral_sign_copywriting_var[str(2 * index)].value,
@@ -101,7 +101,7 @@ def build_integral_tab(config, card_css, switch_internal_css):
 
         query = integral.setdefault("crud", {}).setdefault("query", {})
         query["enable"] = switch_integral_crud_query_enable.value
-        query["cmd"] = common_textarea_handle(textarea_integral_crud_query_cmd.value)
+        query["cmd"] = common_textarea_handle(input_integral_crud_query_cmd.value)
         query["copywriting"] = common_textarea_handle(textarea_integral_crud_query_copywriting.value)
 
     return PageConfig(on_save=save_integral)

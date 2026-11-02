@@ -55,6 +55,7 @@ CARD_DESCRIPTIONS = {
     'MultiTTS': '对接安卓端 MultiTTS 语音引擎聚合服务端。',
     'MeloTTS': '轻量级极速多语言 TTS 库，CPU 上即可实现毫秒级快速合成。',
     'Index-TTS': 'Index 语音合成模型接口，适用于特定训练音色。',
+    'MLX Audio（本地 TTS）': '在 Apple Silicon Mac 上用 mlx-audio 本地跑 Kokoro / Qwen3-TTS，不联网、不用显卡、不用 API Key；支持音色克隆与中文数字/多音字预处理。需要先启动 pre-study/mlx-audio-tts-service。',
 
     # ---------------- 变声后期 (SVC) ----------------
     'DDSP-SVC': '基于可微数字信号处理（DDSP）的超低延迟实时歌声与语音变声，适合直播实时换声。',
@@ -150,6 +151,7 @@ ALIASES = {
     'multitts': 'MultiTTS',
     'melotts': 'MeloTTS',
     'index_tts': 'Index-TTS',
+    'custom_tts': 'MLX Audio（本地 TTS）',
     'ddsp_svc': 'DDSP-SVC',
     'ddsp svc': 'DDSP-SVC',
     'so_vits_svc': 'SO-VITS-SVC',
@@ -208,6 +210,6 @@ def show_card_desc(key_or_desc: str):
     desc = get_desc(key_or_desc, key_or_desc)
     if not desc:
         return None
-    return ui.label(desc).style(
+    return ui.label(desc).classes('luna-desc').style(
         f'font-size:12px;color:{INK_MUT};margin-top:-4px;margin-bottom:8px;line-height:1.45;'
     )

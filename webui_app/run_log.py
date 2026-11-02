@@ -54,7 +54,7 @@ class RunLog:
         with ui.dialog() as self.dialog, ui.card().style('width:100%;max-width:1000px;'):
             with ui.row().classes('items-center').style('gap:8px;width:100%;'):
                 self._title = ui.label('运行日志').style('font-size:15px;font-weight:600;')
-                self._note = ui.label('').style('font-size:12px;color:#4b5563;')
+                self._note = ui.label('').style('font-size:12px;color:#4a4a4a;')
                 ui.space()
                 ui.button('刷新', icon='refresh', on_click=self.refresh).props('flat dense no-caps')
                 ui.button('关闭', on_click=self.dialog.close).props('flat dense no-caps')

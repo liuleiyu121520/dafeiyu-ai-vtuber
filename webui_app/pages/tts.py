@@ -2,7 +2,7 @@
 import traceback
 from urllib.parse import urljoin
 
-from nicegui import ui
+from nicegui import app, ui
 
 from utils.my_log import logger
 from webui_app.confirm import confirm_delete_file, delete_button
@@ -826,7 +826,309 @@ def build_tts_tab(config, common, audio, card_css, switch_internal_css,
                 ).style("width:200px;").tooltip("Index-TTS API程序所在设备的IP地址以及端口号")
                 input_index_tts_prompt_audio = ui.input(label='prompt音频路径', value=config.get("index_tts", "prompt_audio"), placeholder='例如：E:\\1.wav').style("width:200px;").tooltip("prompt音频路径")
                 input_index_tts_temperature = ui.input(label='temperature', value=config.get("index_tts", "temperature"), placeholder='temperature').style("width:200px;").tooltip("temperature")
-                
+    if config.get("webui", "show_card", "tts", "custom_tts"): 
+        with ui.card().style(card_css):
+            ui.label("MLX Audio（本地 TTS）")
+            show_card_desc("MLX Audio（本地 TTS）")
+
+            def custom_tts_base_url():
+                return str(input_custom_tts_api_ip_port.value or "").rstrip("/")
+
+            async def custom_tts_get_json(path, quiet=False):
+                """向本地 TTS 服务取一份 JSON；失败时提示并返回 None。
+
+                quiet=True 用于页面加载时的自动刷新：TTS 服务没起来是很常见的情况，
+                这时候弹一个红色报错只会吓人，用户本来就知道自己还没启动。
+                """
+                import aiohttp
+
+                base = custom_tts_base_url()
+                if not base:
+                    if not quiet:
+                        ui.notify(position="top", type="warning", message="先填 API 地址")
+                    return None
+                try:
+                    async with aiohttp.ClientSession() as session:
+                        async with session.get(base + path, timeout=15) as response:
+                            if response.status != 200:
+                                raise RuntimeError(f"HTTP {response.status}")
+                            return await response.json()
+                except Exception as e:
+                    logger.error(f"请求 {path} 失败: {e}")
+                    if not quiet:
+                        ui.notify(position="top", type="negative", message=f"请求服务端失败: {e}")
+                    return None
+
+            def custom_tts_ensure_option(select, value, note="当前配置"):
+                """把配置里已有、但服务端没列出来的值补进下拉，否则界面会显示空白。"""
+                if not value:
+                    return
+                options = dict(select.options or {})
+                if value not in options:
+                    options[value] = f"{value}（{note}）"
+                    select.set_options(options)
+
+            async def custom_tts_refresh_models(quiet=False):
+                ret = await custom_tts_get_json("/v1/models", quiet=quiet)
+                if ret is None:
+                    return
+                options = {}
+                for item in ret.get("data") or []:
+                    model_id = item.get("id")
+                    if not model_id:
+                        continue
+                    alias = (item.get("aliases") or [None])[0]
+                    short = model_id.split("/")[-1]
+                    label = f"{alias or short}"
+                    if item.get("default"):
+                        label += "（默认）"
+                    if item.get("loaded"):
+                        label += " · 已加载"
+                    options[model_id] = label
+                if not options:
+                    if not quiet:
+                        ui.notify(position="top", type="warning", message="服务端没有返回可用模型")
+                    return
+                keep = select_custom_tts_model.value
+                select_custom_tts_model.set_options(options, value=keep if keep in options else None)
+                if not quiet:
+                    ui.notify(position="top", type="positive", message=f"已拉取 {len(options)} 个模型")
+
+            async def custom_tts_refresh_voices(quiet=False, select_name=None):
+                """拉音色列表。select_name 给定时，刷新后强制选中它（上传完用）。"""
+                ret = await custom_tts_get_json("/v1/voices?kind=all", quiet=quiet)
+                if ret is None:
+                    return
+                options = {}
+                for item in ret.get("data") or []:
+                    name = item.get("name")
+                    if not name:
+                        continue
+                    tag = "克隆" if item.get("is_clone") else "内置"
+                    options[name] = f"{name}（{tag}）"
+                if not options:
+                    if not quiet:
+                        ui.notify(position="top", type="warning", message="服务端音色表是空的")
+                    return
+                keep = select_name if select_name in options else select_custom_tts_voice.value
+                select_custom_tts_voice.set_options(options, value=keep if keep in options else None)
+                if not quiet:
+                    ui.notify(position="top", type="positive", message=f"已拉取 {len(options)} 个音色")
+
+            async def custom_tts_upload_voice(e):
+                """上传参考音频并直接建一个克隆音色。"""
+                import aiohttp
+
+                base = custom_tts_base_url()
+                if not base:
+                    ui.notify(position="top", type="warning", message="先填 API 地址")
+                    return
+
+                voice_name = str(input_custom_tts_upload_name.value or "").strip()
+                if not voice_name:
+                    ui.notify(position="top", type="warning", message="先给这个音色起个名字")
+                    return
+
+                try:
+                    data = await e.file.read()
+                    form = aiohttp.FormData()
+                    form.add_field(
+                        "file", data,
+                        filename=e.file.name,
+                        content_type=e.file.content_type or "application/octet-stream",
+                    )
+                    form.add_field("name", voice_name)
+                    form.add_field("model", "qwen3_clone")
+                    ref_text = str(input_custom_tts_upload_ref_text.value or "").strip()
+                    if ref_text:
+                        form.add_field("ref_text", ref_text)
+
+                    async with aiohttp.ClientSession() as session:
+                        async with session.post(base + "/v1/voices/upload", data=form, timeout=120) as response:
+                            body = await response.json()
+                            if response.status != 200:
+                                detail = body.get("detail") or body.get("error") or f"HTTP {response.status}"
+                                raise RuntimeError(detail)
+                except Exception as ex:
+                    logger.error(f"上传音色失败: {ex}")
+                    ui.notify(position="top", type="negative", message=f"上传音色失败: {ex}")
+                    return
+
+                logger.info(f"已上传音色 {voice_name} -> {body.get('path')}")
+                ui.notify(position="top", type="positive", message=f"音色「{voice_name}」已创建，可以直接选用")
+
+                # 建完立刻刷新列表并选中它，省得用户再点一次
+                await custom_tts_refresh_voices(select_name=voice_name)
+
+            with ui.row():
+                input_custom_tts_api_ip_port = ui.input(
+                    label='API地址', 
+                    value=config.get("custom_tts", "api_ip_port"), 
+                    placeholder='http://127.0.0.1:8788',
+                    validation={
+                        '请输入正确格式的URL': lambda value: common.is_url_check(value),
+                    }
+                ).style("width:340px;").tooltip("本地 mlx-audio-tts-service 的地址；Docker 里跑时用 http://host.docker.internal:8788")
+                select_custom_tts_api_path = ui.select(
+                    label='接口', 
+                    options={'/tts': '/tts（项目原生，推荐）', '/v1/audio/speech': '/v1/audio/speech（OpenAI 兼容）'}, 
+                    value=config.get("custom_tts", "api_path") or '/tts',
+                ).style("width:300px;").tooltip("两个接口返回的都是音频二进制，效果一样")
+                input_custom_tts_timeout = ui.input(
+                    label='超时(秒)', 
+                    value=config.get("custom_tts", "timeout"), 
+                    placeholder='120',
+                ).style("width:130px;").tooltip("首次加载模型会比较慢，建议不低于 120 秒")
+
+            with ui.row():
+                select_custom_tts_model = ui.select(
+                    label='模型',
+                    options={},
+                    with_input=True,
+                    new_value_mode='add-unique',
+                ).style("width:340px;").tooltip("从服务端拉取；也可以直接输入 HF 仓库名或本地目录。留空用服务端默认模型")
+                button_custom_tts_fetch_models = ui.button(
+                    '拉取模型',
+                    on_click=custom_tts_refresh_models,
+                    color=button_internal_color,
+                ).style(button_internal_css)
+
+            with ui.row():
+                select_custom_tts_voice = ui.select(
+                    label='音色',
+                    options={},
+                    with_input=True,
+                    new_value_mode='add-unique',
+                ).style("width:340px;").tooltip("克隆音色选名字即可；也可以直接输入模型自带 speaker（如 zf_xiaoxiao）。留空用服务端默认音色")
+                button_custom_tts_fetch_voices = ui.button(
+                    '拉取音色',
+                    on_click=custom_tts_refresh_voices,
+                    color=button_internal_color,
+                ).style(button_internal_css)
+                input_custom_tts_lang_code = ui.input(
+                    label='语言代码', 
+                    value=config.get("custom_tts", "lang_code"), 
+                    placeholder='z 中文 / a 美音 / b 英音',
+                ).style("width:130px;").tooltip("Kokoro 的语言代码；用 Qwen3 之类的模型时留空（会自动用 auto）")
+                input_custom_tts_speed = ui.input(
+                    label='语速', 
+                    value=config.get("custom_tts", "speed"), 
+                    placeholder='1.0',
+                ).style("width:130px;").tooltip("语速倍率，0.25~4.0，默认 1.0")
+                select_custom_tts_format = ui.select(
+                    label='格式', 
+                    options={'wav': 'wav', 'mp3': 'mp3', 'flac': 'flac', 'ogg': 'ogg'}, 
+                    value=config.get("custom_tts", "format") or 'wav',
+                ).style("width:130px;").tooltip("wav 无损、mp3 体积小；直播用 wav 延迟更低")
+
+            with ui.row():
+                switch_custom_tts_preprocess = ui.switch(
+                    '中文预处理（数字读法 / 多音字 / 分段）', 
+                    value=bool(config.get("custom_tts", "preprocess") if config.get("custom_tts", "preprocess") is not None else True),
+                ).style(switch_internal_css).tooltip("关掉后服务端按原文合成，数字和多音字容易读错")
+
+            with ui.expansion('上传音色（克隆自己的声音）', icon='upload').style('width:100%;'):
+                ui.label(
+                    '准备一段 10~30 秒的清晰人声（一个人说话、没有背景音乐），'
+                    '上传后服务端会把它存成音色，之后在「音色」里选名字就能用这个声音说任意话。'
+                ).style('font-size:12px;color:#64748b;')
+                with ui.row():
+                    input_custom_tts_upload_name = ui.input(
+                        label='音色名称',
+                        placeholder='例如：我的 / 毛毛',
+                    ).style("width:200px;").tooltip("之后在「音色」下拉里用这个名字")
+                    input_custom_tts_upload_ref_text = ui.input(
+                        label='参考音频原文（可选）',
+                        placeholder='录音里念的那句话',
+                    ).style("width:340px;").tooltip("留空也能克隆；填对了会更准，填错反而干扰")
+                # 上传框别用 Quasar 默认的整条实心主色（一大块橙色，跟卡片里其它控件格格不入），
+                # 收成细边框 + 小按钮，和项目其它卡片的内联按钮保持一致
+                upload_custom_tts_ref = ui.upload(
+                    label='选择参考音频（wav / mp3 / flac / m4a / ogg）',
+                    auto_upload=True,
+                    max_file_size=50 * 1024 * 1024,
+                    on_upload=custom_tts_upload_voice,
+                ).style(
+                    'width:100%;max-width:560px;'
+                    'border:1px dashed #cbd5e1;border-radius:8px;background:#f8fafc;'
+                ).props('accept=".wav,.mp3,.flac,.m4a,.ogg" flat bordered color=grey-7')
+                ui.label(
+                    '提示：音色存在服务端 ~/.mlx-tts-service/voices.json，删音色用 '
+                    'DELETE /v1/voices/{名字}。'
+                ).style('font-size:11px;color:#94a3b8;')
+
+            with ui.row():
+                input_custom_tts_ref_audio = ui.input(
+                    label='临时参考音频（可选）', 
+                    value=config.get("custom_tts", "ref_audio"), 
+                    placeholder='不想建档时填，如 /Users/you/voice.wav',
+                ).style("width:340px;").tooltip("填了就用这个音频克隆，优先级高于「音色」；长期使用建议用上面的「上传音色」建档")
+                input_custom_tts_ref_text = ui.input(
+                    label='临时参考音频原文（可选）', 
+                    value=config.get("custom_tts", "ref_text"), 
+                    placeholder='参考音频里念的那句话',
+                ).style("width:340px;").tooltip("配合上面的临时参考音频使用；留空则由服务端按模型能力处理")
+
+            # 首屏就把两个下拉填好，别让用户第一眼看到空白。
+            #
+            # 这里三种异步写法都试过，全不可靠：
+            #   ui.timer(...)      —— 建页要好几秒，定时器常在浏览器连上前就打完了，
+            #                         once 的定时器不补枪，下拉点开永远是空的（groups.py 踩过）；
+            #   on_connect + async —— 回调跑在没有 slot 栈的后台任务里，一碰 ui.notify /
+            #                         set_options 就抛 "slot stack is empty"。
+            # 建页期同步拉最稳：此刻 slot 上下文是对的，而且本机 HTTP 只要几毫秒。
+            # 超时压到 2 秒——服务没启动时最多让建页慢 2 秒，不能拖垮整个后台。
+            def custom_tts_build_initial_options():
+                import requests as _requests
+
+                base = str(config.get("custom_tts", "api_ip_port") or "").rstrip("/")
+                if not base:
+                    return
+                try:
+                    models = _requests.get(base + "/v1/models", timeout=2).json()
+                    voices = _requests.get(base + "/v1/voices?kind=all", timeout=2).json()
+                except Exception as e:
+                    # 服务没起来是常态，不吵；用户点「拉取」时再给明确报错
+                    logger.info(f"建页时拉取模型/音色列表失败（不影响使用）: {e}")
+                    return
+
+                model_options = {}
+                for item in models.get("data") or []:
+                    model_id = item.get("id")
+                    if not model_id:
+                        continue
+                    alias = (item.get("aliases") or [None])[0]
+                    label = alias or model_id.split("/")[-1]
+                    if item.get("default"):
+                        label += "（默认）"
+                    if item.get("loaded"):
+                        label += " · 已加载"
+                    model_options[model_id] = label
+                if model_options:
+                    # 传 value 一起设：只 set_options 不设值的话，控件当前值是 None，
+                    # 界面上就是个空下拉——看着像没拉到，其实选项都在。
+                    current_model = config.get("custom_tts", "model") or ""
+                    select_custom_tts_model.set_options(
+                        model_options, value=current_model if current_model in model_options else None
+                    )
+
+                voice_options = {}
+                for item in voices.get("data") or []:
+                    name = item.get("name")
+                    if not name:
+                        continue
+                    voice_options[name] = f"{name}（{'克隆' if item.get('is_clone') else '内置'}）"
+                if voice_options:
+                    current_voice = config.get("custom_tts", "voice") or ""
+                    select_custom_tts_voice.set_options(
+                        voice_options, value=current_voice if current_voice in voice_options else None
+                    )
+
+                logger.debug(
+                    f"MLX TTS 建页预填：{len(model_options)} 个模型 / {len(voice_options)} 个音色"
+                )
+
+            custom_tts_build_initial_options()
 
     mapping = {}
 
@@ -1043,6 +1345,20 @@ def build_tts_tab(config, common, audio, card_css, switch_internal_css,
             "api_ip_port": (input_index_tts_api_ip_port, 'str'),
             "prompt_audio": (input_index_tts_prompt_audio, 'str'),
             "temperature": (input_index_tts_temperature, 'float'),
+        }
+    if config.get("webui", "show_card", "tts", "custom_tts"):
+        mapping["custom_tts"] = {
+            "api_ip_port": (input_custom_tts_api_ip_port, 'str'),
+            "api_path": (select_custom_tts_api_path, 'str'),
+            "model": (select_custom_tts_model, 'str'),
+            "voice": (select_custom_tts_voice, 'str'),
+            "lang_code": (input_custom_tts_lang_code, 'str'),
+            "speed": (input_custom_tts_speed, 'float'),
+            "format": (select_custom_tts_format, 'str'),
+            "preprocess": (switch_custom_tts_preprocess, 'bool'),
+            "ref_audio": (input_custom_tts_ref_audio, 'str'),
+            "ref_text": (input_custom_tts_ref_text, 'str'),
+            "timeout": (input_custom_tts_timeout, 'int'),
         }
 
 

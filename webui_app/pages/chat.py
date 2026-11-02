@@ -24,14 +24,14 @@ def build_chat_tab(config, common, state, chat_log, card_css, switch_internal_cs
                 'padding:10px 18px;border-bottom:1px solid #f3f4f6;background:#fafafa;'
             ):
                 with ui.row().classes('items-center gap-2'):
-                    ui.icon('chat', size='20px', color='#6366f1')
-                    ui.label('AI 对话与即时交互').style('font-size:14px;font-weight:600;color:#111827;')
+                    ui.icon('chat', size='20px', color='#cc3a05')
+                    ui.label('AI 对话与即时交互').style('font-size:14px;font-weight:600;color:#1f1f1f;')
 
                 with ui.row().classes('items-center gap-4'):
                     # 运行态状态指示
                     is_running = (state.running_flag == 1)
                     ui.label('● 服务运行中' if is_running else '○ 核心未运行').style(
-                        f'font-size:12px;font-weight:500;color:{"#16a34a" if is_running else "#6b7280"};'
+                        f'font-size:12px;font-weight:500;color:{"#15803d" if is_running else "#6a6a6a"};'
                     ).tooltip('核心服务运行状态；未运行时请点击右上角「一键运行」')
 
                     switch_show_log = ui.switch(
@@ -64,16 +64,18 @@ def build_chat_tab(config, common, state, chat_log, card_css, switch_internal_cs
 
                     trigger_key = config.get("talk", "trigger_key")
                     if trigger_key:
-                        ui.badge(f'录音热键: {trigger_key}', color='grey-6').props('outline').tooltip('若未开启直接拾音，可在后台按此快捷键触发录音')
+                        ui.badge(f'录音热键: {trigger_key}').props('outline').style(
+                        'color:#4a4a4a !important;border-color:#c7c7c7;background:#ffffff;').tooltip(
+                        '若未开启直接拾音，可在后台按此快捷键触发录音')
 
                 with ui.row().classes('items-center gap-2'):
                     btn_reread = ui.button('直接复读', on_click=lambda: do_reread()).props(
                         'outline dense no-caps'
-                    ).style('font-size:12px;padding:2px 10px;color:#4b5563;').tooltip('跳过大模型思考，让当前 TTS 语音引擎直接朗读输入框文字（声音调试）')
+                    ).style('font-size:12px;padding:2px 10px;color:#4a4a4a;border-color:#c7c7c7;border-radius:8px;').tooltip('跳过大模型思考，让当前 TTS 语音引擎直接朗读输入框文字（声音调试）')
 
                     btn_tuning = ui.button('调教', on_click=lambda: do_tuning()).props(
                         'outline dense no-caps'
-                    ).style('font-size:12px;padding:2px 10px;color:#4b5563;').tooltip('向 LLM 注入提示词或指导信息，不触发语音播放')
+                    ).style('font-size:12px;padding:2px 10px;color:#4a4a4a;border-color:#c7c7c7;border-radius:8px;').tooltip('向 LLM 注入提示词或指导信息，不触发语音播放')
 
             # 下排：文本输入与发送
             with ui.row().classes('w-full items-center gap-2'):
@@ -82,7 +84,7 @@ def build_chat_tab(config, common, state, chat_log, card_css, switch_internal_cs
                 ).props('outlined dense').classes('flex-grow').style('font-size:14px;')
 
                 btn_send = ui.button('发送', on_click=lambda: do_send()).props('unelevated').style(
-                    'padding:0 22px;height:40px;background:#6366f1;color:#ffffff;font-weight:600;border-radius:6px;'
+                    'padding:0 22px;height:40px;background:#fa520f;color:#ffffff;font-weight:600;border-radius:8px;'
                 ).tooltip('发送消息给 AI，模拟弹幕互动并触发语音回复')
 
                 input_text.on('keydown.enter.prevent', lambda: do_send())

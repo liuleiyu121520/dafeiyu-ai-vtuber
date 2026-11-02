@@ -103,7 +103,7 @@ def locate(element):
 
 
 # 校验失败时描的圈：不用 Quasar 的语义名（negative），这段是拼进 outline 的裸 CSS
-INVALID_RING = '#dc2626'
+INVALID_RING = '#c22a04'
 
 
 def hidden(element):

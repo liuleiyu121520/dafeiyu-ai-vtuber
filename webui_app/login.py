@@ -143,7 +143,9 @@ def build_login(config, common, login_card_css, on_success):
     with login_column:
         login_card = ui.card().style(login_card_css)
         with login_card:
-            label_login = ui.label('AI    Vtuber').style("font-size: 30px;letter-spacing: 5px;color: #3b3838;")
+            label_login = ui.label('AI Vtuber').style(
+                "font-family:Newsreader,Georgia,serif;font-size:34px;font-weight:600;"
+                "letter-spacing:1px;color:#1f1f1f;")
             input_login_username = ui.input(label='用户名', placeholder='您的账号，请找管理员申请', value="").style("width:250px;")
             input_login_password = ui.input(label='密码', password=True, placeholder='您的密码，请找管理员申请', value="").style("width:250px;")
             # 登录表单不写 config.json：不打这个标，DirtyGuard 会把输入记成「未保存」

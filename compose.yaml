@@ -64,16 +64,35 @@ services:
     volumes:
       # 配置：整份挂进去，WebUI 保存后宿主机立刻能看到
       - ./config.json:/app/config.json
+      # 代码与静态资源挂载：修改实时生效
+      - ./webui.py:/app/webui.py
+      - ./webui_app:/app/webui_app
+      - ./utils:/app/utils
+      # docker/ 必须挂：apply_env_config.py 负责把 .env 的 MLX_TTS_VOICE 等写进
+      # config.json。镜像内是旧版、没有 MLX_TTS_* 映射表，导致 .env 改了音色
+      # 也没人认（报「无变化」），只能等 rebuild 镜像才生效。
+      # entrypoint.sh / healthcheck.py 两边内容一致，且实际执行的是
+      # /usr/local/bin 下的副本，挂载不影响启动。
+      - ./docker:/app/docker
+      - ./ui:/app/ui
+      - ./tests:/app/tests
       # 持久化：容器重建不丢
       - ./log:/app/log
       - ./out:/app/out
       - ./data:/app/data
       - ./song:/app/song
       - ./bgm_cache:/app/bgm_cache
+      # Live2D 整目录挂载：html/js/css/assets 改动实时生效，不用再 docker cp。
+      # 背景视频等素材放进 Live2D/assets/ 后容器立刻能播。
+      - ./Live2D:/app/Live2D
       # Live2D 模型（大肥鱼模型不在仓库里，宿主机准备好后挂进来）
       - ./Live2D/live2d-model:/app/Live2D/live2d-model
-      # 说明：Live2D 的 html/js/css/assets 用镜像内的（跟随代码版本），
-      # 只把模型目录挂出来，避免宿主机缺文件导致舞台页 404
+      # 说明：以前只挂模型目录、其余走镜像内副本，改一次舞台页就得 rebuild 或
+      # docker cp（cp 写的是容器可写层，down 掉就没了）。宿主机 Live2D 与镜像
+      # 内容已逐文件核对一致，整目录挂载不会让舞台页 404。
+      # integrations/ 挂载：抖音采集器 collector.py 住在这里，改了即生效，
+      # 不用 rebuild 镜像（镜像内那份没有 collector）。
+      - ./integrations:/app/integrations
 
     healthcheck:
       test: ["CMD", "python", "/usr/local/bin/healthcheck.py", "--quiet"]
@@ -94,5 +113,35 @@ services:
 
     # 音频缓存清理：out/ 里每天积累的临时 wav 由 scripts/macos/doctor.sh --clean 处理
     # 不在容器里做 cron，避免和 bind mount 抢文件
+
+  # 抖音弹幕采集器：纯 Python 直连抖音 wss，替代 Windows 上的 WssBarrageServer.exe。
+  # 只在开播时启动：docker compose --profile collector up -d
+  # 它把事件 POST 给 dafeiyu 的 Hub(:8888)/inject，dy.py 一行都不用改。
+  # 用 profile 隔离是因为没开播时会一直重连刷日志，不该默认常驻。
+  douyin-collector:
+    image: dafeiyu-ai-vtuber:macos-arm64
+    platform: linux/arm64
+    container_name: dafeiyu-collector
+    profiles: ["collector"]
+    restart: unless-stopped
+    depends_on:
+      - dafeiyu
+    environment:
+      TZ: Asia/Shanghai
+      # 直播间号：复用 .env 的 ROOM_ID（与主程序同一个值），不用再配第二处。
+      # 需要分开时才显式设 DY_LIVE_ID。
+      DY_LIVE_ID: "${DY_LIVE_ID:-${ROOM_ID:-}}"
+      # 走 compose 网络访问主容器的 Hub（Hub 在容器内绑 0.0.0.0，见 BARRAGE_HUB_BIND）
+      DAFEIYU_HUB_URL: "http://dafeiyu:8888"
+      # 被风控时把自己浏览器里抓到的完整 wss 地址贴进来，{room_id} 会被替换
+      # DY_WSS_URL: "wss://webcast5-ws-web-lf.douyin.com/webcast/im/push/v2/?...&room_id={room_id}..."
+    volumes:
+      - ./integrations:/app/integrations
+      - ./protobuf:/app/protobuf
+    # 主镜像的 HEALTHCHECK 探的是 8081/5500 这些服务端口，采集器不监听任何端口，
+    # 照抄会永远 unhealthy。这里显式关掉，健康与否看日志。
+    healthcheck:
+      disable: true
+    entrypoint: ["python", "/app/integrations/douyin/collector.py"]
 
 volumes: {}

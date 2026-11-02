@@ -34,10 +34,10 @@ def page_order():
     """tab 条应有的顺序：总览打头，然后按 8 大工作区走。"""
     return list(PAGE_LIST)
 
-INK = '#111827'
-INK_MUT = '#4b5563'
-OK = '#16a34a'
-WARN = '#b45309'
+INK = '#1f1f1f'
+INK_MUT = '#4a4a4a'
+OK = '#15803d'
+WARN = '#cc3a05'
 
 
 def group_of(tab_name):
@@ -145,7 +145,7 @@ def build_overview_tab(config, state, dirty_guard, select, save_config, card_css
         for step, row in enumerate(readiness(config), start=1):
             with ui.row().style(
                     'align-items:center;gap:10px;width:100%;padding:8px 0;'
-                    'border-top:1px solid rgba(17,24,39,0.10);'):
+                    'border-top:1px solid rgba(31,31,31,0.08);'):
                 # 没填的显示序号、填好的换成勾：既是一条有序路径，又一眼看出还差哪几步
                 if row['ok']:
                     ui.icon('check_circle').style(f'color:{OK};font-size:20px;')
@@ -159,7 +159,7 @@ def build_overview_tab(config, state, dirty_guard, select, save_config, card_css
                 # 「去配置」不止切页，还要落到那个框上并描一下边（story-1 的验收标准）
                 ui.button('去配置', on_click=lambda r=row: jump_to(
                     r['field'], 0, accent, select, r['tab'])).props(
-                    'flat dense no-caps size=sm').style(f'color:{LINK} !important;')
+                    'flat dense no-caps size=sm').style(f'color:{LINK} !important;min-height:28px;padding:4px 10px;')
 
         ui.button('保存配置', on_click=save_config).props('outline no-caps dense').style(
             'margin-top:12px;')
