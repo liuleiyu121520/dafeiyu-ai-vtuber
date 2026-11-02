@@ -59,7 +59,10 @@ services:
       - "127.0.0.1:${API_PORT:-8082}:8082"
       - "127.0.0.1:${LIVE2D_PORT:-12345}:12345"
       - "127.0.0.1:${CAPTION_PORT:-5500}:5500"
-      - "127.0.0.1:${BARRAGE_HUB_PORT:-8888}:8888"
+      # 8888 是唯一对外放开的端口：弹幕 Hub 要接局域网内另一台机器送来的
+      # 弹幕（Windows 上跑 WssBarrageServer.exe）。只给局域网用，别映射到公网。
+      # 不想对外时把 BARRAGE_HUB_BIND_ADDR 设成 127.0.0.1 即可收回。
+      - "${BARRAGE_HUB_BIND_ADDR:-0.0.0.0}:${BARRAGE_HUB_PORT:-8888}:8888"
 
     volumes:
       # 配置：整份挂进去，WebUI 保存后宿主机立刻能看到
