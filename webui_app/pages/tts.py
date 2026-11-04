@@ -964,11 +964,11 @@ def build_tts_tab(config, common, audio, card_css, switch_internal_css,
                 input_custom_tts_api_ip_port = ui.input(
                     label='API地址', 
                     value=config.get("custom_tts", "api_ip_port"), 
-                    placeholder='http://127.0.0.1:8788',
+                    placeholder='http://127.0.0.1:8790',
                     validation={
                         '请输入正确格式的URL': lambda value: common.is_url_check(value),
                     }
-                ).style("width:340px;").tooltip("本地 mlx-audio-tts-service 的地址；Docker 里跑时用 http://host.docker.internal:8788")
+                ).style("width:340px;").tooltip("本地 tts-studio 的地址；Docker 里跑时用 http://host.docker.internal:8790")
                 select_custom_tts_api_path = ui.select(
                     label='接口', 
                     options={'/tts': '/tts（项目原生，推荐）', '/v1/audio/speech': '/v1/audio/speech（OpenAI 兼容）'}, 

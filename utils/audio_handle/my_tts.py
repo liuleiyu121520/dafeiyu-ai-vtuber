@@ -1013,7 +1013,7 @@ class MY_TTS:
         """
         try:
             cfg = data.get("custom_tts") or self.config.get("custom_tts") or {}
-            api_ip_port = str(cfg.get("api_ip_port") or "http://127.0.0.1:8788").rstrip("/")
+            api_ip_port = str(cfg.get("api_ip_port") or "http://127.0.0.1:8790").rstrip("/")
             api_path = str(cfg.get("api_path") or "/tts")
             if not api_path.startswith("/"):
                 api_path = "/" + api_path

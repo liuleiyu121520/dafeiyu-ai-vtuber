@@ -20,21 +20,23 @@ printf "\n%s🐟 大肥鱼 AI 虚拟主播 · 启动%s\n\n" "$BOLD" "$RESET"
 # ---- 1. 本地 MLX TTS 服务 ----
 # config.json 里 audio_synthesis_type=custom_tts 时，语音合成走这个服务；
 # 没启用的话起一下也无妨（空闲不占 GPU，几十 MB 内存），省得用户切换 TTS 后忘启动。
-TTS_PROJ="$HOME/code/pre-study/mlx-audio-tts-service"
-if curl -sf --max-time 2 http://127.0.0.1:8788/health >/dev/null 2>&1; then
-    ok "本地 TTS 服务已在运行"
-elif [ -x "$TTS_PROJ/.venv/bin/python" ]; then
-    info "启动本地 TTS 服务（mlx-audio）..."
-    (cd "$TTS_PROJ" && nohup env PYTHONPATH=src .venv/bin/python -m mlx_tts_service serve --port 8788 >> "$TTS_PROJ/service.log" 2>&1 &)
-    for _ in $(seq 1 20); do
-        curl -sf --max-time 2 http://127.0.0.1:8788/health >/dev/null 2>&1 && break
+TTS_PROJ="$HOME/code/pre-study/tts-studio"
+TTS_HOST_ADDR="${TTS_HOST:-0.0.0.0}"   # 绑 0.0.0.0，Windows 直装的机器才连得上
+TTS_PORT_NUM="${TTS_PORT:-8790}"
+if curl -sf --max-time 2 "http://127.0.0.1:${TTS_PORT_NUM}/health" >/dev/null 2>&1; then
+    ok "本地 TTS 服务已在运行（:${TTS_PORT_NUM}）"
+elif [ -x "$TTS_PROJ/scripts/start.sh" ]; then
+    info "启动本地 TTS 服务（tts-studio）..."
+    (cd "$TTS_PROJ" && TTS_HOST="$TTS_HOST_ADDR" TTS_PORT="$TTS_PORT_NUM" ./scripts/start.sh >/dev/null 2>&1)
+    for _ in $(seq 1 25); do
+        curl -sf --max-time 2 "http://127.0.0.1:${TTS_PORT_NUM}/health" >/dev/null 2>&1 && break
         sleep 1
     done
-    if curl -sf --max-time 2 http://127.0.0.1:8788/health >/dev/null 2>&1; then
+    if curl -sf --max-time 2 "http://127.0.0.1:${TTS_PORT_NUM}/health" >/dev/null 2>&1; then
         ok "本地 TTS 服务已启动"
     else
         # 只提醒不拦：用户可能用的是 edge-tts / fish_audio，不需要本地服务
-        warn "本地 TTS 服务没起来（不用 custom_tts 可忽略）；日志：$TTS_PROJ/service.log"
+        warn "本地 TTS 服务没起来（不用 custom_tts 可忽略）；日志：$TTS_PROJ/logs/server.log"
     fi
 else
     warn "找不到本地 TTS 服务（$TTS_PROJ），跳过；不用 custom_tts 可忽略"

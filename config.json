@@ -1871,7 +1871,7 @@
     }
   },
   "custom_tts": {
-    "api_ip_port": "http://192.168.1.4:8788",
+    "api_ip_port": "http://192.168.1.4:8790",
     "api_path": "/tts",
     "model": "",
     "voice": "毛毛",
