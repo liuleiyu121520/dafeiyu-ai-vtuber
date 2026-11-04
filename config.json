@@ -98,7 +98,7 @@
     "normal_interval_min": 0.05,
     "normal_interval_max": 0.1,
     "out_path": "out",
-    "player": "browser",
+    "player": "pygame",
     "info_to_callback": true
   },
   "audio_player": {
@@ -293,7 +293,7 @@
     "name": "大肥鱼"
   },
   "openai": {
-    "api": "http://host.docker.internal:8326/v1",
+    "api": "http://192.168.1.4:18326/v1",
     "api_key": [
       "S_U9_P4OutO5L2dNcPdFy_-YSTl5BQ2Cg6mbKSF1T_M"
     ]
@@ -1871,7 +1871,7 @@
     }
   },
   "custom_tts": {
-    "api_ip_port": "http://host.docker.internal:8788",
+    "api_ip_port": "http://192.168.1.4:8788",
     "api_path": "/tts",
     "model": "",
     "voice": "毛毛",
@@ -1882,5 +1882,8 @@
     "ref_audio": "",
     "ref_text": "",
     "timeout": 300
+  },
+  "dy": {
+    "ws_url": "ws://127.0.0.1:8888"
   }
 }
